@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+@media print {
+  body {
+    background-color: white !important;
+    color: black !important;
+  }
+  
+  .print-watermark {
+    display: flex !important;
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    opacity: 0.12 !important;
+    z-index: 0 !important;
+    pointer-events: none !important;
+  }
+}
+
+@media screen {
+  .print-watermark {
+    display: none !important;
+  }
+}
