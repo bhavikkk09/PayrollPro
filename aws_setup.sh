@@ -41,17 +41,19 @@ fi
 # 2. Add Current User to Docker Group
 sudo usermod -aG docker $USER || true
 
-# 3. Clean Install Dependencies & Force Linux Native Bindings
-echo "=== 🔨 Installing Dependencies & Native Linux Bindings ==="
-rm -rf node_modules package-lock.json
-npm install --force --os=linux --cpu=x64
-npm install --save-dev --force @tailwindcss/oxide-linux-x86-64-gnu @tailwindcss/oxide-linux-x86-64-musl @esbuild/linux-x64 || true
-npm run build
-
-echo "=== ⚡ Starting PayrollPro Server with PM2 ==="
-pm2 stop payrollpro || true
-pm2 start dist/server.cjs --name "payrollpro"
-pm2 save || true
+# 3. Deploy via Docker Compose (Isolated Clean Container)
+echo "=== 🔨 Building & Deploying via Docker Container ==="
+if sudo docker compose up -d --build; then
+    echo "=== ✅ Docker Container Deployment Successful! ==="
+else
+    echo "=== Fallback: Building with Host Node.js ==="
+    rm -rf node_modules package-lock.json
+    npm install
+    npm run build
+    pm2 stop payrollpro || true
+    pm2 start dist/server.cjs --name "payrollpro"
+    pm2 save || true
+fi
 
 # 4. Configure Nginx Reverse Proxy
 echo "=== 🌐 Configuring Nginx Reverse Proxy ==="
