@@ -41,11 +41,11 @@ fi
 # 2. Add Current User to Docker Group
 sudo usermod -aG docker $USER || true
 
-# 3. Clean Install Dependencies & Linux Native Bindings
+# 3. Clean Install Dependencies & Force Linux Native Bindings
 echo "=== 🔨 Installing Dependencies & Native Linux Bindings ==="
 rm -rf node_modules package-lock.json
-npm install --include=optional || npm install --force
-npm install @tailwindcss/oxide-linux-x86-64-gnu @tailwindcss/oxide-linux-x86-64-musl @esbuild/linux-x64 --save-optional || true
+npm install --force --os=linux --cpu=x64
+npm install --save-dev --force @tailwindcss/oxide-linux-x86-64-gnu @tailwindcss/oxide-linux-x86-64-musl @esbuild/linux-x64 || true
 npm run build
 
 echo "=== ⚡ Starting PayrollPro Server with PM2 ==="
