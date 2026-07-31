@@ -41,9 +41,11 @@ fi
 # 2. Add Current User to Docker Group
 sudo usermod -aG docker $USER || true
 
-# 3. Build & Launch Application using Node.js & PM2
-echo "=== 🔨 Installing Dependencies & Building PayrollPro ==="
+# 3. Clean Install Dependencies & Linux Native Bindings
+echo "=== 🔨 Installing Dependencies & Native Linux Bindings ==="
+rm -rf node_modules package-lock.json
 npm install
+npm rebuild || true
 npm run build
 
 echo "=== ⚡ Starting PayrollPro Server with PM2 ==="
