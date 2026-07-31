@@ -10,20 +10,20 @@ echo "=== 🚀 Starting Universal AWS EC2 PayrollPro Setup ==="
 if command -v dnf &> /dev/null; then
     echo "=== Detected Amazon Linux 2023 / RHEL (dnf) ==="
     sudo dnf update -y
-    sudo dnf install -y git nginx docker curl nodejs npm
-    sudo systemctl enable --now docker
-    sudo systemctl enable --now nginx
-    sudo npm install -g pm2
+    sudo dnf install -y --allowerasing git nginx docker nodejs npm || sudo dnf install -y git nginx docker nodejs npm
+    sudo systemctl enable --now docker || true
+    sudo systemctl enable --now nginx || true
+    sudo npm install -g pm2 || true
     IS_AMAZON_LINUX=true
 elif command -v yum &> /dev/null; then
     echo "=== Detected Amazon Linux 2 / CentOS (yum) ==="
     sudo yum update -y
-    sudo yum install -y git nginx docker curl
-    sudo systemctl enable --now docker
-    sudo systemctl enable --now nginx
+    sudo yum install -y git nginx docker
+    sudo systemctl enable --now docker || true
+    sudo systemctl enable --now nginx || true
     curl -fsSL https://rpm.nodesource.com/setup_22.x | sudo bash -
     sudo yum install -y nodejs
-    sudo npm install -g pm2
+    sudo npm install -g pm2 || true
     IS_AMAZON_LINUX=true
 elif command -v apt-get &> /dev/null; then
     echo "=== Detected Ubuntu / Debian (apt) ==="
@@ -31,7 +31,7 @@ elif command -v apt-get &> /dev/null; then
     sudo apt install -y curl git nginx certbot python3-certbot-nginx docker.io
     curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
     sudo apt install -y nodejs
-    sudo npm install -g pm2
+    sudo npm install -g pm2 || true
     IS_AMAZON_LINUX=false
 else
     echo "❌ Unknown package manager. Please use Ubuntu or Amazon Linux."
@@ -41,7 +41,7 @@ fi
 # 2. Add Current User to Docker Group
 sudo usermod -aG docker $USER || true
 
-# 3. Build & Launch Application using Node.js & PM2 (or Docker)
+# 3. Build & Launch Application using Node.js & PM2
 echo "=== 🔨 Installing Dependencies & Building PayrollPro ==="
 npm install
 npm run build
