@@ -268,11 +268,27 @@ export const SuperAdminPortal: React.FC = () => {
     showToast(`Automated DB + File Backup initiated for ${tenantName}`);
   };
 
-  const handleImpersonate = (subdomain: string) => {
+  const handleImpersonate = (subdomain: string, tenantName?: string) => {
     let cleanCode = subdomain.includes('tenant=') ? subdomain.split('tenant=')[1] : subdomain;
     cleanCode = cleanCode.replace(/^https?:\/\//, '').replace(/\/+$/, '').split('/')[0];
-    const targetUrl = `http://localhost:3000/${cleanCode}`;
-    showToast(`Opening Local Tenant Workspace: ${targetUrl}`);
+    cleanCode = cleanCode.toLowerCase().replace(/[^a-z0-9-]/g, '') || 'smit';
+    
+    const companyTitle = tenantName || (cleanCode.charAt(0).toUpperCase() + cleanCode.slice(1) + ' Pvt. Ltd.');
+
+    // Save active tenant and HR user session into localStorage
+    localStorage.setItem('payrollpro_active_tenant', cleanCode);
+    localStorage.setItem('payrollpro_auth_user', JSON.stringify({
+      email: `hr@${cleanCode}.in`,
+      name: `${companyTitle} (HR Manager)`,
+      role: 'company_admin',
+      tenantId: cleanCode,
+      tenantName: companyTitle,
+      token: `token_impersonate_${Date.now()}`
+    }));
+    localStorage.setItem('payrollpro_last_active_time', Date.now().toString());
+
+    const targetUrl = `http://localhost:3000/?tenant=${cleanCode}`;
+    showToast(`Opening Tenant Workspace: ${companyTitle} (${targetUrl})`);
     setTimeout(() => {
       window.location.href = targetUrl;
     }, 400);
@@ -513,7 +529,7 @@ export const SuperAdminPortal: React.FC = () => {
                         <div className="flex flex-col">
                           <span className="font-bold text-slate-900">{t.name}</span>
                           <button
-                            onClick={() => handleImpersonate(t.subdomain)}
+                            onClick={() => handleImpersonate(t.subdomain, t.name)}
                             className="text-[11px] text-indigo-600 font-mono flex items-center gap-1 hover:underline cursor-pointer text-left"
                             title="Click to launch SSO login into tenant site"
                           >
@@ -522,7 +538,7 @@ export const SuperAdminPortal: React.FC = () => {
                           </button>
                           {t.customDomain && (
                             <button
-                              onClick={() => handleImpersonate(t.customDomain!)}
+                              onClick={() => handleImpersonate(t.customDomain!, t.name)}
                               className="text-[10px] text-emerald-600 font-mono hover:underline cursor-pointer text-left"
                               title="Click to open custom domain SSO"
                             >
@@ -601,12 +617,12 @@ export const SuperAdminPortal: React.FC = () => {
                       <td className="p-3.5 text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
-                            onClick={() => handleImpersonate(t.subdomain)}
-                            className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg font-semibold text-[11px] border border-indigo-200 transition-all flex items-center gap-1 cursor-pointer"
-                            title="Impersonate Tenant Administrator"
+                            onClick={() => handleImpersonate(t.subdomain, t.name)}
+                            className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg font-semibold text-[11px] border border-indigo-200 transition-all flex items-center gap-1 cursor-pointer font-sans"
+                            title="Open Tenant Administrator Workspace"
                           >
-                            <Eye className="w-3.5 h-3.5" />
-                            Impersonate
+                            <ExternalLink className="w-3.5 h-3.5 text-indigo-600" />
+                            Open Site
                           </button>
 
                           <button

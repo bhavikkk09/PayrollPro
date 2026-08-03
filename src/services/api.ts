@@ -1,16 +1,33 @@
 // API Client Service for Frappe HRMS Modern Redesign
 import { Employee, LeaveRequest, ComplianceDueItem, PayrollBatch, SalaryComponent } from '../types';
 
-// Helper to get active tenant ID from URL path or query string
+// Helper to get active tenant ID from URL path, query string, or active session
 function getTenantHeader(): Record<string, string> {
   const queryTenant = new URLSearchParams(window.location.search).get('tenant');
   const pathname = window.location.pathname.replace(/^\/+|\/+$/g, '');
-  const pathTenant = (pathname && pathname !== 'admin' && pathname !== 'superadmin') ? pathname : null;
-  const tenant = queryTenant || pathTenant || 'apex';
+  const pathTenant = (pathname && pathname !== 'admin' && pathname !== 'superadmin' && !pathname.startsWith('api')) ? pathname : null;
+  
+  let savedTenant: string | null = null;
+  try {
+    savedTenant = localStorage.getItem('payrollpro_active_tenant');
+    if (!savedTenant) {
+      const auth = localStorage.getItem('payrollpro_auth_user');
+      if (auth) {
+        const parsed = JSON.parse(auth);
+        if (parsed.tenantId && parsed.tenantId !== 'platform_master') {
+          savedTenant = parsed.tenantId;
+        }
+      }
+    }
+  } catch {}
+
+  const tenant = (queryTenant || pathTenant || savedTenant || 'apex')
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '');
 
   return {
     'Content-Type': 'application/json',
-    'x-tenant-id': tenant
+    'x-tenant-id': tenant || 'apex'
   };
 }
 

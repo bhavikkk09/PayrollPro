@@ -61,12 +61,20 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         };
         onLoginSuccess(user);
       } else {
+        const normalizedCode = (tenantCode || 'apex').toLowerCase().replace(/[^a-z0-9-]/g, '') || 'apex';
+        let formattedTenantName = tenantCode ? tenantCode.charAt(0).toUpperCase() + tenantCode.slice(1) : 'Apex';
+        if (!formattedTenantName.toLowerCase().includes('pvt') && !formattedTenantName.toLowerCase().includes('ltd')) {
+          formattedTenantName += ' Pvt. Ltd.';
+        }
+
+        localStorage.setItem('payrollpro_active_tenant', normalizedCode);
+
         const user: AuthUser = {
-          email: email || 'hr@apexenterprises.in',
-          name: 'Sneha Deshmukh (HR Manager)',
+          email: email || `hr@${normalizedCode}.in`,
+          name: 'HR Manager',
           role: 'company_admin',
-          tenantId: tenantCode || 'apex',
-          tenantName: 'Apex Enterprises Pvt. Ltd.',
+          tenantId: normalizedCode,
+          tenantName: formattedTenantName,
           token: `token_${Date.now()}`
         };
         onLoginSuccess(user);
