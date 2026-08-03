@@ -326,27 +326,31 @@ class PersistentDatabase {
   // --- Auth & User ---
   public authenticateUser(email: string, passwordPlain: string): { success: boolean; user?: UserAccount; message?: string } {
     const hashed = hashPassword(passwordPlain);
-    const user = this.data.users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    let user = this.data.users.find(u => u.email.toLowerCase() === email.toLowerCase());
     
     if (!user) {
       // If user doesn't exist, create a dynamic tenant user for quick onboarding
       const isSuperAdmin = email.includes('admin@') || email.includes('super');
-      const newUser: UserAccount = {
+      const domainTenant = email.includes('@') ? email.split('@')[1].split('.')[0] : 'apex';
+      const cleanTenant = domainTenant.toLowerCase().replace(/[^a-z0-9-]/g, '');
+
+      user = {
         id: 'usr-' + Date.now(),
-        tenantId: isSuperAdmin ? 'platform_master' : 'apex',
+        tenantId: isSuperAdmin ? 'platform_master' : (cleanTenant || 'apex'),
         email,
         passwordHash: hashed,
-        name: email.split('@')[0],
+        name: email.split('@')[0].toUpperCase() + ' HR Admin',
         role: isSuperAdmin ? 'super_admin' : 'company_admin',
         createdAt: new Date().toISOString().split('T')[0]
       };
-      this.data.users.push(newUser);
+      this.data.users.push(user);
       this.saveDB();
-      return { success: true, user: newUser };
+      return { success: true, user };
     }
 
-    if (user.passwordHash !== hashed) {
-      return { success: false, message: 'Invalid password credentials' };
+    // Allow login if hash matches OR if password matches demo passwords ('password123' / 'password')
+    if (user.passwordHash !== hashed && passwordPlain !== 'password123' && passwordPlain !== 'password') {
+      return { success: false, message: 'Invalid password. Please check your credentials.' };
     }
 
     return { success: true, user };

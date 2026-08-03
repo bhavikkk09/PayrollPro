@@ -36,38 +36,41 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, initialTen
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
+
+    if (!email.trim()) {
+      setErrorMsg('Please enter your work email address.');
+      return;
+    }
+    if (!password.trim()) {
+      setErrorMsg('Please enter your account password.');
+      return;
+    }
+
     setIsLoading(true);
+    let loginResult: any = null;
 
     try {
-      if (!email.trim()) {
-        setIsLoading(false);
-        setErrorMsg('Please enter a valid email or username.');
-        return;
-      }
-      if (!password.trim()) {
-        setIsLoading(false);
-        setErrorMsg('Please enter your account password.');
-        return;
-      }
-
-      const res = await api.login(email, password, loginRole === 'superadmin' ? 'platform_master' : tenantCode);
+      loginResult = await api.login(email, password, loginRole === 'superadmin' ? 'platform_master' : tenantCode);
+    } catch (err: any) {
+      console.error('Login API fetch failed:', err);
       setIsLoading(false);
+      setErrorMsg('Could not connect to backend server. Please verify network connection.');
+      return;
+    }
 
-      if (res && res.success && res.user) {
-        if (res.user.tenantId && res.user.tenantId !== 'platform_master') {
-          sessionStorage.setItem('payrollpro_active_tenant', res.user.tenantId);
-          localStorage.setItem('payrollpro_active_tenant', res.user.tenantId);
-        }
-        onLoginSuccess(res.user);
-      } else {
-        setErrorMsg(res.message || 'Authentication failed. Please check credentials.');
+    setIsLoading(false);
+
+    if (loginResult && loginResult.success && loginResult.user) {
+      if (loginResult.user.tenantId && loginResult.user.tenantId !== 'platform_master') {
+        sessionStorage.setItem('payrollpro_active_tenant', loginResult.user.tenantId);
+        localStorage.setItem('payrollpro_active_tenant', loginResult.user.tenantId);
       }
-    } catch {
-      setIsLoading(false);
-      setErrorMsg('Could not connect to authentication server.');
+      onLoginSuccess(loginResult.user);
+    } else {
+      setErrorMsg(loginResult?.message || 'Invalid email or password. Please check your credentials.');
     }
   };
 
@@ -85,16 +88,20 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, initialTen
           token: `token_demo_${Date.now()}`
         });
       } else {
+        const activeTenant = (tenantCode || 'smit').toLowerCase().replace(/[^a-z0-9-]/g, '');
+        sessionStorage.setItem('payrollpro_active_tenant', activeTenant);
+        localStorage.setItem('payrollpro_active_tenant', activeTenant);
+
         onLoginSuccess({
-          email: 'hr.manager@apexenterprises.in',
-          name: 'Sneha Deshmukh (HR Manager)',
+          email: `hr@${activeTenant}.in`,
+          name: `${activeTenant.toUpperCase()} HR Admin`,
           role: 'company_admin',
-          tenantId: 'apex',
-          tenantName: 'Apex Enterprises Pvt. Ltd.',
+          tenantId: activeTenant,
+          tenantName: `${activeTenant.toUpperCase()} Enterprises Pvt. Ltd.`,
           token: `token_demo_${Date.now()}`
         });
       }
-    }, 400);
+    }, 300);
   };
 
   return (
