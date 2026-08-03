@@ -37,6 +37,15 @@ async function startServer() {
 
   app.use(express.json({ limit: "10mb" }));
 
+  // JSON Error Handling Middleware (prevents body-parser crashes)
+  app.use((err: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (err) {
+      console.warn("JSON parsing issue handled:", err.message);
+      return res.status(400).json({ success: false, message: "Malformed JSON payload" });
+    }
+    next();
+  });
+
   let ai: GoogleGenAI | null = null;
   if (process.env.GEMINI_API_KEY) {
     try {

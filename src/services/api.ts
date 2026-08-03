@@ -47,9 +47,13 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, tenantCode })
       });
-      return await res.json();
-    } catch {
-      return { success: false, message: 'Server connection error during login' };
+      const contentType = res.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        return await res.json();
+      }
+      return { success: false, message: 'Server returned invalid non-JSON response' };
+    } catch (err: any) {
+      return { success: false, message: err?.message || 'Server connection error during login' };
     }
   },
 
