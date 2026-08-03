@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Users, Banknote, CalendarCheck, ShieldCheck, Sparkles, ArrowRight, X } from 'lucide-react';
-import { sampleEmployees } from '../../data/mockData';
-import { NavigationSection } from '../../types';
+import { NavigationSection, Employee } from '../../types';
+import { api } from '../../services/api';
 
 interface CommandPaletteProps {
   isOpen: boolean;
@@ -19,13 +19,23 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   onOpenAiAssistant
 }) => {
   const [query, setQuery] = useState('');
+  const [employees, setEmployees] = useState<Employee[]>([]);
+
+  useEffect(() => {
+    if (isOpen) {
+      async function loadEmps() {
+        const data = await api.getEmployees();
+        if (Array.isArray(data)) setEmployees(data);
+      }
+      loadEmps();
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         if (isOpen) onClose();
-        else onClose(); // reset state
       }
       if (e.key === 'Escape' && isOpen) {
         onClose();
@@ -37,7 +47,7 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
 
   if (!isOpen) return null;
 
-  const filteredEmployees = sampleEmployees.filter(
+  const filteredEmployees = employees.filter(
     (e) =>
       e.fullName.toLowerCase().includes(query.toLowerCase()) ||
       e.id.toLowerCase().includes(query.toLowerCase()) ||

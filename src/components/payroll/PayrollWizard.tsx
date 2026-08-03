@@ -78,7 +78,7 @@ export const PayrollWizard: React.FC = () => {
             Indian Statutory Payroll Processing Wizard
           </h2>
           <p className="text-xs text-slate-300 mt-1">
-            Automated 7-step salary computation for {sampleEmployees.length} active employees under Indian Labor Laws.
+            Automated 7-step salary computation for {employees.length} active employees under Indian Labor Laws.
           </p>
         </div>
 

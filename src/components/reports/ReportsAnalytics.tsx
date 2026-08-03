@@ -32,6 +32,8 @@ export const ReportsAnalytics: React.FC = () => {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
+  const [employees, setEmployees] = useState<Employee[]>([]);
+
   useEffect(() => {
     async function loadReports() {
       const payReg = await api.getPayRegisterReport();
@@ -49,6 +51,16 @@ export const ReportsAnalytics: React.FC = () => {
     loadReports();
   }, []);
 
+  useEffect(() => {
+    async function loadData() {
+      const data = await api.getEmployees();
+      if (Array.isArray(data)) {
+        setEmployees(data);
+      }
+    }
+    loadData();
+  }, []);
+
   // Handle Loading Salary Slip for selected employee
   useEffect(() => {
     async function loadSlip() {
@@ -57,7 +69,11 @@ export const ReportsAnalytics: React.FC = () => {
         const data = await res.json();
         if (data && data.salarySlip) setSalarySlipData(data.salarySlip);
       } catch {
-        const emp = sampleEmployees.find(e => e.id === selectedSlipEmployeeId) || sampleEmployees[0];
+        const emp = employees.find(e => e.id === selectedSlipEmployeeId) || employees[0];
+        if (!emp) {
+          setSalarySlipData(null);
+          return;
+        }
         setSalarySlipData({
           slipId: `SLIP-2026-07-${emp.id}`,
           employee: emp,
@@ -388,9 +404,13 @@ export const ReportsAnalytics: React.FC = () => {
                 onChange={(e) => setSelectedSlipEmployeeId(e.target.value)}
                 className="p-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-hidden"
               >
-                {sampleEmployees.map(emp => (
-                  <option key={emp.id} value={emp.id}>{emp.fullName} ({emp.id})</option>
-                ))}
+                {employees.length === 0 ? (
+                  <option value="">No employees available in workspace</option>
+                ) : (
+                  employees.map(emp => (
+                    <option key={emp.id} value={emp.id}>{emp.fullName} ({emp.id})</option>
+                  ))
+                )}
               </select>
 
               <button

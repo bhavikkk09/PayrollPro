@@ -331,7 +331,7 @@ export default function App() {
           {activeSection === 'attendance' && <AttendanceGrid />}
 
           {/* 4. Leave & Holidays Management */}
-          {activeSection === 'leave' && <LeaveManagement />}
+          {activeSection === 'leave' && <LeaveManagement employeesList={employeesList} />}
 
           {/* 5. Guided Payroll Wizard */}
           {activeSection === 'payroll' && <PayrollWizard />}

@@ -1,9 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Download, FileText, CheckCircle2, AlertCircle, Building2, Calculator } from 'lucide-react';
-import { sampleComplianceItems } from '../../data/mockData';
+import { ComplianceDueItem } from '../../types';
+import { api } from '../../services/api';
 
 export const ComplianceHub: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'pf' | 'esic' | 'pt' | 'tds'>('overview');
+  const [complianceItems, setComplianceItems] = useState<ComplianceDueItem[]>([]);
+
+  useEffect(() => {
+    async function loadItems() {
+      const data = await api.getComplianceItems();
+      if (Array.isArray(data)) {
+        setComplianceItems(data);
+      }
+    }
+    loadItems();
+  }, []);
 
   const handleDownloadPfECR = async () => {
     const res = await fetch('/api/compliance/generate-pf-ecr', { method: 'POST' });
@@ -158,26 +170,34 @@ export const ComplianceHub: React.FC = () => {
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {sampleComplianceItems.map((item) => (
-                <div key={item.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2 text-xs">
-                  <div className="flex items-center justify-between font-bold text-slate-900">
-                    <span>{item.title}</span>
-                    <span className="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-mono">
-                      Due: {item.dueDate}
-                    </span>
-                  </div>
-                  <p className="text-slate-600">{item.description}</p>
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-200">
-                    <span className="font-mono font-bold text-slate-900">Amount: ₹{item.amountDue.toLocaleString('en-IN')}</span>
-                    <button
-                      onClick={() => handleGenerateFiling(item.id)}
-                      className="text-indigo-600 font-bold hover:underline cursor-pointer flex items-center gap-1"
-                    >
-                      <Download className="w-3.5 h-3.5" /> Generate Filing File →
-                    </button>
-                  </div>
+              {complianceItems.length === 0 ? (
+                <div className="p-8 text-center bg-slate-50 rounded-xl border border-slate-200 text-slate-500 text-xs font-medium space-y-1 col-span-2">
+                  <ShieldCheck className="w-6 h-6 text-emerald-500 mx-auto mb-1" />
+                  <div className="font-bold text-slate-800 text-sm">No Pending Statutory Filings</div>
+                  <p className="text-slate-500">Add employees and run payroll to compute monthly PF, ESIC, and PT statutory return filings.</p>
                 </div>
-              ))}
+              ) : (
+                complianceItems.map((item) => (
+                  <div key={item.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2 text-xs">
+                    <div className="flex items-center justify-between font-bold text-slate-900">
+                      <span>{item.title}</span>
+                      <span className="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-mono">
+                        Due: {item.dueDate}
+                      </span>
+                    </div>
+                    <p className="text-slate-600">{item.description}</p>
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-200">
+                      <span className="font-mono font-bold text-slate-900">Amount: ₹{item.amountDue.toLocaleString('en-IN')}</span>
+                      <button
+                        onClick={() => handleGenerateFiling(item.id)}
+                        className="text-indigo-600 font-bold hover:underline cursor-pointer flex items-center gap-1"
+                      >
+                        <Download className="w-3.5 h-3.5" /> Generate Filing File →
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         )}

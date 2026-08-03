@@ -1,17 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { CalendarDays, CheckCircle2, XCircle, Plus, Info, ShieldCheck, Clock } from 'lucide-react';
-import { sampleLeaveRequests, sampleEmployees } from '../../data/mockData';
-import { LeaveRequest } from '../../types';
+import { LeaveRequest, Employee } from '../../types';
 import { api } from '../../services/api';
 
-export const LeaveManagement: React.FC = () => {
+interface LeaveManagementProps {
+  employeesList?: Employee[];
+}
+
+export const LeaveManagement: React.FC<LeaveManagementProps> = ({ employeesList = [] }) => {
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>(employeesList);
   const [activeTab, setActiveTab] = useState<'requests' | 'ledger' | 'policy' | 'holidays'>('requests');
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const [leaveForm, setLeaveForm] = useState({
-    employeeId: 'EMP-00101',
+    employeeId: '',
     leaveType: 'Casual Leave (CL)' as any,
     fromDate: new Date().toISOString().split('T')[0],
     toDate: new Date().toISOString().split('T')[0],
@@ -19,14 +23,22 @@ export const LeaveManagement: React.FC = () => {
   });
 
   useEffect(() => {
-    async function loadRequests() {
+    async function loadData() {
       const data = await api.getLeaveRequests();
       if (Array.isArray(data)) {
         setRequests(data);
       }
+      if (!employeesList || employeesList.length === 0) {
+        const empData = await api.getEmployees();
+        if (Array.isArray(empData)) {
+          setEmployees(empData);
+        }
+      } else {
+        setEmployees(employeesList);
+      }
     }
-    loadRequests();
-  }, []);
+    loadData();
+  }, [employeesList]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -244,15 +256,27 @@ export const LeaveManagement: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
-                {sampleEmployees.map((e) => (
-                  <tr key={e.id} className="hover:bg-slate-50">
-                    <td className="p-3 font-bold text-slate-900">{e.fullName} ({e.id})</td>
-                    <td className="p-3 font-mono text-indigo-700 font-bold">{e.leaveBalance.casual} Days</td>
-                    <td className="p-3 font-mono text-indigo-700 font-bold">{e.leaveBalance.sick} Days</td>
-                    <td className="p-3 font-mono text-indigo-700 font-bold">{e.leaveBalance.privilege} Days</td>
-                    <td className="p-3 font-mono text-indigo-700 font-bold">{e.leaveBalance.compOff} Days</td>
+                {employees.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="p-8 text-center text-slate-500 bg-slate-50/50">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <Clock className="w-6 h-6 text-slate-400" />
+                        <span className="font-bold text-sm text-slate-700">No Leave Balance Records</span>
+                        <span className="text-xs text-slate-400">There are zero employees in this tenant workspace to display leave balances.</span>
+                      </div>
+                    </td>
                   </tr>
-                ))}
+                ) : (
+                  employees.map((e) => (
+                    <tr key={e.id} className="hover:bg-slate-50">
+                      <td className="p-3 font-bold text-slate-900">{e.fullName} ({e.id})</td>
+                      <td className="p-3 font-mono text-indigo-700 font-bold">{(e.leaveBalance?.casual ?? 5)} Days</td>
+                      <td className="p-3 font-mono text-indigo-700 font-bold">{(e.leaveBalance?.sick ?? 5)} Days</td>
+                      <td className="p-3 font-mono text-indigo-700 font-bold">{(e.leaveBalance?.privilege ?? 10)} Days</td>
+                      <td className="p-3 font-mono text-indigo-700 font-bold">{(e.leaveBalance?.compOff ?? 0)} Days</td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -268,35 +292,35 @@ export const LeaveManagement: React.FC = () => {
 
           <div className="p-4 bg-indigo-50/60 rounded-xl border border-indigo-100 space-y-2">
             <div className="font-bold text-indigo-900">What is the Sandwich Rule?</div>
-            <p className="text-slate-700">
-              If an employee takes leave on both Friday and the following Monday, the intervening weekend (Saturday and Sunday) will be automatically counted as Leave Days.
+            <p className="text-indigo-800 leading-relaxed">
+              If an employee takes leave on Friday and Monday, the intervening weekend (Saturday & Sunday) is automatically counted as paid/unpaid leave unless exempted by HR.
             </p>
-            <div className="flex items-center gap-2 pt-2">
-              <span className="font-bold text-slate-800">Sandwich Rule Status:</span>
-              <span className="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full text-[10px]">
-                ENABLED (ERPNext Frappe Rules)
-              </span>
-            </div>
           </div>
         </div>
       )}
 
-      {/* Tab 4: Holidays */}
+      {/* Tab 4: Holiday List */}
       {activeTab === 'holidays' && (
         <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-4 text-xs">
           <h3 className="text-sm font-bold text-slate-900 border-b border-slate-200 pb-2">
-            Official Holiday Calendar 2026
+            Mandatory National & Festival Holiday Calendar (2026)
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {holidays.map((h, i) => (
-              <div key={i} className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+            {[
+              { date: '26 Jan 2026', name: 'Republic Day', type: 'National Holiday' },
+              { date: '15 Aug 2026', name: 'Independence Day', type: 'National Holiday' },
+              { date: '02 Oct 2026', name: 'Gandhi Jayanti', type: 'National Holiday' },
+              { date: '01 Nov 2026', name: 'Diwali Laxmi Pujan', type: 'Festival' },
+              { date: '25 Dec 2026', name: 'Christmas', type: 'Festival' }
+            ].map((h, idx) => (
+              <div key={idx} className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
                 <div>
-                  <div className="font-bold text-slate-900 text-sm">{h.name}</div>
-                  <div className="text-slate-500">{h.date} • {h.day}</div>
+                  <div className="font-bold text-slate-900">{h.name}</div>
+                  <div className="text-[10px] text-slate-500">{h.type}</div>
                 </div>
-                <span className="text-[10px] bg-blue-100 text-blue-800 font-bold px-2.5 py-1 rounded-full">
-                  {h.type}
+                <span className="font-mono font-bold text-indigo-600 bg-white border border-slate-200 px-2 py-1 rounded-md">
+                  {h.date}
                 </span>
               </div>
             ))}
@@ -304,19 +328,14 @@ export const LeaveManagement: React.FC = () => {
         </div>
       )}
 
-      {/* APPLY LEAVE MODAL */}
+      {/* Apply Leave Modal */}
       {isApplyModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
             <div className="p-5 bg-slate-900 text-white flex items-center justify-between">
-              <div>
-                <h3 className="text-base font-bold flex items-center gap-2">
-                  <CalendarDays className="w-5 h-5 text-indigo-400" />
-                  Apply Leave Record
-                </h3>
-                <p className="text-xs text-slate-300 mt-0.5">
-                  Submits leave application into Frappe HR Leave Request workflow
-                </p>
+              <div className="flex items-center gap-2">
+                <CalendarDays className="w-5 h-5 text-indigo-400" />
+                <h3 className="font-bold text-sm">Apply New Leave Request</h3>
               </div>
               <button
                 type="button"
@@ -335,11 +354,15 @@ export const LeaveManagement: React.FC = () => {
                   onChange={(e) => setLeaveForm({ ...leaveForm, employeeId: e.target.value })}
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-hidden font-medium text-slate-900"
                 >
-                  {sampleEmployees.map((e) => (
-                    <option key={e.id} value={e.id}>
-                      {e.fullName} ({e.id}) — {e.department}
-                    </option>
-                  ))}
+                  {employees.length === 0 ? (
+                    <option value="">No active employees in workspace</option>
+                  ) : (
+                    employees.map((e) => (
+                      <option key={e.id} value={e.id}>
+                        {e.fullName} ({e.id}) — {e.department}
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
 
