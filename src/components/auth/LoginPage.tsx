@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { api } from '../../services/api';
 import {
   Building2,
   Lock,
@@ -193,7 +194,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, initialTen
           )}
 
           {/* Login Form */}
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {/* Tenant Code (Company Login Only) */}
             {loginRole === 'company' && (
               <div>
