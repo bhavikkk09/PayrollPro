@@ -149,7 +149,7 @@ export const PayrollWizard: React.FC = () => {
             </div>
 
             <p className="text-xs text-slate-600">
-              Review monthly check-in logs. 0 unapproved missing punches detected. Total Loss of Pay (LOP) days: 3 across company.
+              Review monthly check-in logs. 0 unapproved missing punches detected. Total Loss of Pay (LOP) days: {employees.length === 0 ? 0 : 3} across company.
             </p>
 
             <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-2">
@@ -173,10 +173,17 @@ export const PayrollWizard: React.FC = () => {
             <p className="text-xs text-slate-600">
               Overtime rate multiplier set to 1.5x hourly basic pay as per Factories Act / Shops & Establishment Act.
             </p>
-            <div className="p-4 bg-indigo-50/60 rounded-xl border border-indigo-100 text-xs space-y-1">
-              <div className="font-bold text-indigo-900">Calculated OT Payout for July 2026: ₹12,450</div>
-              <div className="text-slate-600">Rahul Sharma (4 hrs) • Priya Patel (2 hrs) • Amit Verma (6 hrs)</div>
-            </div>
+            {employees.length === 0 ? (
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1">
+                <div className="font-bold text-slate-800">Calculated OT Payout for July 2026: ₹0</div>
+                <div className="text-slate-500">No overtime hours logged for this cycle.</div>
+              </div>
+            ) : (
+              <div className="p-4 bg-indigo-50/60 rounded-xl border border-indigo-100 text-xs space-y-1">
+                <div className="font-bold text-indigo-900">Calculated OT Payout for July 2026: ₹12,450</div>
+                <div className="text-slate-600">{employees.slice(0, 3).map(e => e.fullName).join(' (4 hrs) • ')}</div>
+              </div>
+            )}
           </div>
         )}
 
@@ -228,14 +235,21 @@ export const PayrollWizard: React.FC = () => {
             <h3 className="text-sm font-bold text-slate-900 border-b border-slate-200 pb-3">
               Step 5: Salary Variance & Anomaly Audit
             </h3>
-            <div className="p-4 bg-amber-50 rounded-xl border border-amber-200 text-xs space-y-2">
-              <div className="font-bold text-amber-900 flex items-center gap-1.5">
-                <AlertTriangle className="w-4 h-4 text-amber-600" /> 1 Salary Variance Alert Flagged
+            {employees.length === 0 ? (
+              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                <span>✨ Zero salary variance alerts. All employee compensation matches standard pay structures.</span>
               </div>
-              <p className="text-amber-800">
-                Karan Mehta's net salary is 10% lower due to 2 Unpaid LWP days during probation. Verified correct.
-              </p>
-            </div>
+            ) : (
+              <div className="p-4 bg-amber-50 rounded-xl border border-amber-200 text-xs space-y-2">
+                <div className="font-bold text-amber-900 flex items-center gap-1.5">
+                  <AlertTriangle className="w-4 h-4 text-amber-600" /> 1 Salary Variance Alert Flagged
+                </div>
+                <p className="text-amber-800">
+                  {employees[0]?.fullName || 'Employee'}'s net salary is 10% lower due to 2 Unpaid LWP days during probation. Verified correct.
+                </p>
+              </div>
+            )}
           </div>
         )}
 
@@ -250,7 +264,7 @@ export const PayrollWizard: React.FC = () => {
               <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
                 <div>
                   <div className="font-bold text-slate-800">1. HR Operations Approval</div>
-                  <div className="text-slate-500">Sneha Deshmukh (HR Manager)</div>
+                  <div className="text-slate-500">HR Operations Admin</div>
                 </div>
                 <button
                   onClick={() => setHrApproved(!hrApproved)}
@@ -265,7 +279,7 @@ export const PayrollWizard: React.FC = () => {
               <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
                 <div>
                   <div className="font-bold text-slate-800">2. Finance Controller Approval</div>
-                  <div className="text-slate-500">Amit Verma (Finance Manager)</div>
+                  <div className="text-slate-500">Finance Controller</div>
                 </div>
                 <button
                   onClick={() => setFinanceApproved(!financeApproved)}
@@ -280,7 +294,7 @@ export const PayrollWizard: React.FC = () => {
               <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
                 <div>
                   <div className="font-bold text-slate-800">3. Managing Director Final Signoff</div>
-                  <div className="text-slate-500">Vikramaditya Rao (MD)</div>
+                  <div className="text-slate-500">Managing Director</div>
                 </div>
                 <button
                   onClick={() => setDirectorApproved(!directorApproved)}

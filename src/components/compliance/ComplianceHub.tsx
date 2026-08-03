@@ -220,8 +220,8 @@ export const ComplianceHub: React.FC = () => {
             </p>
             <div className="p-4 bg-slate-900 text-emerald-400 font-mono text-[11px] rounded-xl overflow-x-auto leading-relaxed border border-slate-800">
               # Official EPFO ECR Text Payload Format:<br />
-              100912345678#~#RAHUL SHARMA#~#95000#~#15000#~#15000#~#15000#~#1800#~#1250#~#550#~#0#~#0<br />
-              100987654321#~#PRIYA PATEL#~#78000#~#15000#~#15000#~#15000#~#1800#~#1250#~#550#~#1#~#0
+              100912345678#~#EMPLOYEE NAME 1#~#95000#~#15000#~#15000#~#15000#~#1800#~#1250#~#550#~#0#~#0<br />
+              100987654321#~#EMPLOYEE NAME 2#~#78000#~#15000#~#15000#~#15000#~#1800#~#1250#~#550#~#1#~#0
             </div>
           </div>
         )}
@@ -244,8 +244,8 @@ export const ComplianceHub: React.FC = () => {
             </p>
             <div className="p-4 bg-slate-900 text-emerald-400 font-mono text-[11px] rounded-xl overflow-x-auto leading-relaxed border border-slate-800">
               IP Number,IP Name,No of Days Worked for which wages paid,Total Monthly Wages,Reason Code for Zero Working Days,Last Working Day<br />
-              &quot;3100123456001&quot;,&quot;Rahul Sharma&quot;,26,95000,0,&quot;&quot;<br />
-              &quot;3100987654002&quot;,&quot;Sneha Deshmukh&quot;,25,21000,0,&quot;&quot;
+              &quot;3100123456001&quot;,&quot;Employee Name 1&quot;,26,95000,0,&quot;&quot;<br />
+              &quot;3100987654002&quot;,&quot;Employee Name 2&quot;,25,21000,0,&quot;&quot;
             </div>
           </div>
         )}
@@ -260,29 +260,26 @@ export const ComplianceHub: React.FC = () => {
                 onClick={handleDownloadPtReturn}
                 className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
               >
-                <Download className="w-3.5 h-3.5" /> Download PT Form III-A CSV (.csv)
+                <Download className="w-3.5 h-3.5" /> Download PT Return CSV (.csv)
               </button>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-                <div className="font-bold text-slate-900">Maharashtra</div>
-                <div className="text-slate-600 font-mono">Gross ≤ ₹7,500: ₹0</div>
-                <div className="text-slate-600 font-mono">Gross &gt; ₹10,000: ₹200 (Feb ₹300)</div>
+
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+              <div className="font-bold text-slate-800">State PT Slabs Matrix</div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="p-3 bg-white border border-slate-200 rounded-lg">
+                  <div className="font-bold text-slate-900">Maharashtra</div>
+                  <div className="text-slate-500 font-mono mt-1">₹0 - ₹7,500: Nil<br />₹7,501 - ₹10,000: ₹175<br />&gt; ₹10,000: ₹200 (₹300 Feb)</div>
+                </div>
+                <div className="p-3 bg-white border border-slate-200 rounded-lg">
+                  <div className="font-bold text-slate-900">Karnataka</div>
+                  <div className="text-slate-500 font-mono mt-1">&lt; ₹25,000: Nil<br />&ge; ₹25,000: ₹200/month</div>
+                </div>
+                <div className="p-3 bg-white border border-slate-200 rounded-lg">
+                  <div className="font-bold text-slate-900">Gujarat / TN</div>
+                  <div className="text-slate-500 font-mono mt-1">₹6,000 - ₹8,999: ₹80<br />₹9,000 - ₹11,999: ₹150<br />&ge; ₹12,000: ₹200/month</div>
+                </div>
               </div>
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-                <div className="font-bold text-slate-900">Karnataka</div>
-                <div className="text-slate-600 font-mono">Gross &lt; ₹25,000: ₹0</div>
-                <div className="text-slate-600 font-mono">Gross ≥ ₹25,000: ₹200 / month</div>
-              </div>
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-                <div className="font-bold text-slate-900">Telangana</div>
-                <div className="text-slate-600 font-mono">Gross ₹15k - ₹20k: ₹150</div>
-                <div className="text-slate-600 font-mono">Gross &gt; ₹20k: ₹200 / month</div>
-              </div>
-            </div>
-            <div className="p-4 bg-slate-900 text-emerald-400 font-mono text-[11px] rounded-xl overflow-x-auto leading-relaxed border border-slate-800">
-              Registration Certificate No,Period Code,Taxpayer Name,Gross Salary Slab,Employee Count,Tax Rate per Employee (INR),Total PT Amount (INR)<br />
-              &quot;27123456789P&quot;,&quot;202607&quot;,&quot;Apex Enterprises India Pvt. Ltd.&quot;,&quot;Gross Salary &gt; RS 10000&quot;,120,200,24000
             </div>
           </div>
         )}
@@ -291,22 +288,22 @@ export const ComplianceHub: React.FC = () => {
           <div className="space-y-4 text-xs">
             <div className="flex items-center justify-between border-b border-slate-200 pb-2">
               <h3 className="text-sm font-bold text-slate-900">
-                Income Tax TDS Form 24Q Quarterly Return (NSDL FVU)
+                Income Tax TDS (Form 24Q) Quarterly Filing & Slabs
               </h3>
               <button
                 onClick={handleDownloadTds24Q}
                 className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
               >
-                <Download className="w-3.5 h-3.5" /> Download Form 24Q Text File (.txt)
+                <Download className="w-3.5 h-3.5" /> Download Form 24Q Text Payload (.txt)
               </button>
             </div>
             <p className="text-slate-600">
-              Section 192 Salary Income Tax deduction quarterly return payload for NSDL RPU / FVU validation utility.
+              New Tax Regime FY 2026-27 (Standard Deduction ₹75,000). Tax Slabs: 0-3L (Nil), 3-7L (5%), 7-10L (10%), 10-12L (15%), 12-15L (20%), &gt;15L (30%). Rebate 87A up to ₹7,00,000.
             </p>
             <div className="p-4 bg-slate-900 text-emerald-400 font-mono text-[11px] rounded-xl overflow-x-auto leading-relaxed border border-slate-800">
-              FH#SL1#24Q#2026-07-31#1#P#MUMA12345B#AAACA1234F#Apex Enterprises India Pvt. Ltd.#Q1#2026-27<br />
-              BH#1#142#Section 192#620000#0#0<br />
-              CD#1#1#EMP-00101#ABCPS1234F#RAHUL SHARMA#95000#7600#0
+              # Form 24Q Quarter 1 Text Format:<br />
+              FH#NSDL#24Q#2026-07-31#1#P#TAN123456A#APEX ENTERPRISES INDIA PVT LTD<br />
+              CD#1#1#EMP-00101#ABCPS1234F#EMPLOYEE NAME 1#95000#7600#0
             </div>
           </div>
         )}
