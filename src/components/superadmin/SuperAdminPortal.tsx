@@ -221,7 +221,7 @@ export const SuperAdminPortal: React.FC = () => {
             customDomain: `${newTenantForm.subdomain}.localhost:3000`,
             plan: newTenantForm.plan,
             status: 'Active',
-            employeeCount: 1,
+            employeeCount: newTenantForm.demoData ? 5 : 0,
             maxEmployees: newTenantForm.employeeLimit,
             storageUsedMb: 120,
             dbSizeMb: 45,

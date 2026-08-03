@@ -247,43 +247,52 @@ export const ActionDashboard: React.FC<ActionDashboardProps> = ({
               <AlertCircle className="w-4 h-4 text-amber-500" />
               Urgent HR Action Items
             </h3>
-            <span className="text-xs text-slate-500">{sampleActionItems.length} items require response</span>
+            <span className="text-xs text-slate-500">
+              {totalEmployees === 0 ? 0 : sampleActionItems.length} items require response
+            </span>
           </div>
 
           <div className="space-y-3">
-            {sampleActionItems.map((action) => (
-              <div
-                key={action.id}
-                className="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between gap-4 hover:border-indigo-300 transition-all"
-              >
-                <div className="flex items-start gap-3">
-                  <div
-                    className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
-                      action.urgency === 'High' ? 'bg-rose-500' : 'bg-amber-500'
-                    }`}
-                  ></div>
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-900">{action.title}</h4>
-                    <p className="text-xs text-slate-500 mt-0.5">{action.subtitle}</p>
-                    <span className="inline-block mt-1 text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-xs">
-                      {action.category}
-                    </span>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => {
-                    if (action.actionType === 'GOTO_LEAVE') onSelectSection('leave');
-                    else if (action.actionType === 'GOTO_ATTENDANCE') onSelectSection('attendance');
-                    else if (action.actionType === 'GOTO_EMPLOYEES') onSelectSection('employees');
-                    else if (action.actionType === 'GOTO_COMPLIANCE') onSelectSection('compliance');
-                  }}
-                  className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white rounded-xl text-xs font-semibold border border-indigo-200/80 transition-all shrink-0"
-                >
-                  {action.actionLabel}
-                </button>
+            {totalEmployees === 0 ? (
+              <div className="p-6 text-center bg-white rounded-2xl border border-slate-200/80 text-slate-500 text-xs font-medium">
+                <Sparkles className="w-6 h-6 text-emerald-500 mx-auto mb-2" />
+                <span>Zero pending action items. This workspace has clean state with 0 records.</span>
               </div>
-            ))}
+            ) : (
+              sampleActionItems.map((action) => (
+                <div
+                  key={action.id}
+                  className="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between gap-4 hover:border-indigo-300 transition-all"
+                >
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
+                        action.urgency === 'High' ? 'bg-rose-500' : 'bg-amber-500'
+                      }`}
+                    ></div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900">{action.title}</h4>
+                      <p className="text-xs text-slate-500 mt-0.5">{action.subtitle}</p>
+                      <span className="inline-block mt-1 text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-xs">
+                        {action.category}
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      if (action.actionType === 'GOTO_LEAVE') onSelectSection('leave');
+                      else if (action.actionType === 'GOTO_ATTENDANCE') onSelectSection('attendance');
+                      else if (action.actionType === 'GOTO_EMPLOYEES') onSelectSection('employees');
+                      else if (action.actionType === 'GOTO_COMPLIANCE') onSelectSection('compliance');
+                    }}
+                    className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white rounded-xl text-xs font-semibold border border-indigo-200/80 transition-all shrink-0"
+                  >
+                    {action.actionLabel}
+                  </button>
+                </div>
+              ))
+            )}
           </div>
 
           {/* Pending Leave Request Fast-Approve Box */}
@@ -345,45 +354,53 @@ export const ActionDashboard: React.FC<ActionDashboardProps> = ({
                 Birthdays & Anniversaries
               </h3>
               <span className="text-[10px] text-pink-600 font-semibold bg-pink-50 px-2 py-0.5 rounded-full">
-                This Week
+                This Month
               </span>
             </div>
 
             <div className="space-y-2.5">
-              <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50">
-                <div className="flex items-center gap-2.5">
-                  <img
-                    src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=100&auto=format&fit=crop&q=80"
-                    alt="Priya"
-                    className="w-7 h-7 rounded-full object-cover"
-                  />
-                  <div>
-                    <div className="text-xs font-semibold text-slate-800">Priya Patel</div>
-                    <div className="text-[10px] text-slate-500">Birthday • 29th July</div>
-                  </div>
+              {totalEmployees === 0 ? (
+                <div className="p-3 text-center bg-slate-50 rounded-xl text-slate-500 text-xs font-medium">
+                  ✨ No upcoming birthdays or anniversaries for this month.
                 </div>
-                <button
-                  onClick={() => alert("Wishes sent to Priya Patel via WhatsApp/Email!")}
-                  className="text-[10px] font-semibold text-indigo-600 bg-white border border-slate-200 px-2 py-1 rounded-md hover:bg-indigo-50"
-                >
-                  Send Wish 🎉
-                </button>
-              </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50">
+                    <div className="flex items-center gap-2.5">
+                      <img
+                        src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=100&auto=format&fit=crop&q=80"
+                        alt="Priya"
+                        className="w-7 h-7 rounded-full object-cover"
+                      />
+                      <div>
+                        <div className="text-xs font-semibold text-slate-800">Priya Patel</div>
+                        <div className="text-[10px] text-slate-500">Birthday • 29th July</div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => alert("Wishes sent to Priya Patel via WhatsApp/Email!")}
+                      className="text-[10px] font-semibold text-indigo-600 bg-white border border-slate-200 px-2 py-1 rounded-md hover:bg-indigo-50"
+                    >
+                      Send Wish 🎉
+                    </button>
+                  </div>
 
-              <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50">
-                <div className="flex items-center gap-2.5">
-                  <img
-                    src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80"
-                    alt="Amit"
-                    className="w-7 h-7 rounded-full object-cover"
-                  />
-                  <div>
-                    <div className="text-xs font-semibold text-slate-800">Amit Verma</div>
-                    <div className="text-[10px] text-slate-500">6 Years Work Anniversary</div>
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50">
+                    <div className="flex items-center gap-2.5">
+                      <img
+                        src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80"
+                        alt="Amit"
+                        className="w-7 h-7 rounded-full object-cover"
+                      />
+                      <div>
+                        <div className="text-xs font-semibold text-slate-800">Amit Verma</div>
+                        <div className="text-[10px] text-slate-500">6 Years Work Anniversary</div>
+                      </div>
+                    </div>
+                    <span className="text-[10px] text-slate-400 font-mono">10 Aug</span>
                   </div>
-                </div>
-                <span className="text-[10px] text-slate-400 font-mono">10 Aug</span>
-              </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -395,37 +412,45 @@ export const ActionDashboard: React.FC<ActionDashboardProps> = ({
             </h3>
 
             <div className="space-y-2">
-              <div className="p-2.5 rounded-xl border border-indigo-100 bg-indigo-50/40 text-xs space-y-1">
-                <div className="flex items-center justify-between font-semibold text-slate-800">
-                  <span>Karan Mehta</span>
-                  <span className="text-[10px] bg-indigo-100 text-indigo-800 px-1.5 py-0.5 rounded-xs">
-                    Probation Ends 01 Aug
-                  </span>
+              {totalEmployees === 0 ? (
+                <div className="p-3 text-center bg-slate-50 rounded-xl text-slate-500 text-xs font-medium">
+                  ✨ No active probations or document expiries found.
                 </div>
-                <p className="text-[11px] text-slate-500">Full Stack Dev • Bengaluru Branch</p>
-                <button
-                  onClick={() => onSelectEmployee('EMP-00105')}
-                  className="text-[11px] font-bold text-indigo-600 hover:underline pt-1 block"
-                >
-                  Review Probation & Issue Letter →
-                </button>
-              </div>
+              ) : (
+                <>
+                  <div className="p-2.5 rounded-xl border border-indigo-100 bg-indigo-50/40 text-xs space-y-1">
+                    <div className="flex items-center justify-between font-semibold text-slate-800">
+                      <span>Karan Mehta</span>
+                      <span className="text-[10px] bg-indigo-100 text-indigo-800 px-1.5 py-0.5 rounded-xs">
+                        Probation Ends 01 Aug
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500">Full Stack Dev • Bengaluru Branch</p>
+                    <button
+                      onClick={() => onSelectEmployee('EMP-00105')}
+                      className="text-[11px] font-bold text-indigo-600 hover:underline pt-1 block"
+                    >
+                      Review Probation & Issue Letter →
+                    </button>
+                  </div>
 
-              <div className="p-2.5 rounded-xl border border-amber-100 bg-amber-50/40 text-xs space-y-1">
-                <div className="flex items-center justify-between font-semibold text-slate-800">
-                  <span>Ananya Iyer</span>
-                  <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-xs">
-                    Notice Period (30 Days)
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-500">Exit Clearance & F&F Settlement pending</p>
-                <button
-                  onClick={() => onSelectEmployee('EMP-00106')}
-                  className="text-[11px] font-bold text-amber-700 hover:underline pt-1 block"
-                >
-                  Open Exit Workflow →
-                </button>
-              </div>
+                  <div className="p-2.5 rounded-xl border border-amber-100 bg-amber-50/40 text-xs space-y-1">
+                    <div className="flex items-center justify-between font-semibold text-slate-800">
+                      <span>Ananya Iyer</span>
+                      <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-xs">
+                        Notice Period (30 Days)
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500">Exit Clearance & F&F Settlement pending</p>
+                    <button
+                      onClick={() => onSelectEmployee('EMP-00106')}
+                      className="text-[11px] font-bold text-amber-700 hover:underline pt-1 block"
+                    >
+                      Open Exit Workflow →
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
