@@ -275,23 +275,28 @@ export const SuperAdminPortal: React.FC = () => {
     
     const companyTitle = tenantName || (cleanCode.charAt(0).toUpperCase() + cleanCode.slice(1) + ' Pvt. Ltd.');
 
-    // Save active tenant and HR user session into localStorage
-    localStorage.setItem('payrollpro_active_tenant', cleanCode);
-    localStorage.setItem('payrollpro_auth_user', JSON.stringify({
+    const authPayload = JSON.stringify({
       email: `hr@${cleanCode}.in`,
       name: `${companyTitle} (HR Manager)`,
       role: 'company_admin',
       tenantId: cleanCode,
       tenantName: companyTitle,
       token: `token_impersonate_${Date.now()}`
-    }));
+    });
+
+    sessionStorage.setItem('payrollpro_active_tenant', cleanCode);
+    sessionStorage.setItem('payrollpro_auth_user', authPayload);
+    sessionStorage.setItem('payrollpro_last_active_time', Date.now().toString());
+
+    localStorage.setItem('payrollpro_active_tenant', cleanCode);
+    localStorage.setItem('payrollpro_auth_user', authPayload);
     localStorage.setItem('payrollpro_last_active_time', Date.now().toString());
 
     const targetUrl = `http://localhost:3000/?tenant=${cleanCode}`;
     showToast(`Opening Tenant Workspace: ${companyTitle} (${targetUrl})`);
     setTimeout(() => {
-      window.location.href = targetUrl;
-    }, 400);
+      window.open(targetUrl, '_blank');
+    }, 200);
   };
 
   return (

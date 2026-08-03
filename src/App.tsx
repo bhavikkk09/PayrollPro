@@ -29,16 +29,20 @@ export default function App() {
   // Authentication & 1-Hour Session Security State
   const [authUser, setAuthUser] = useState<AuthUser | null>(() => {
     try {
-      const saved = localStorage.getItem('payrollpro_auth_user');
-      const lastActive = localStorage.getItem('payrollpro_last_active_time');
+      // Prioritize tab-scoped sessionStorage, falling back to localStorage
+      const saved = sessionStorage.getItem('payrollpro_auth_user') || localStorage.getItem('payrollpro_auth_user');
+      const lastActive = sessionStorage.getItem('payrollpro_last_active_time') || localStorage.getItem('payrollpro_last_active_time');
       if (saved && lastActive) {
         const elapsed = Date.now() - parseInt(lastActive, 10);
         // 1 Hour = 3600000 ms
         if (elapsed >= 3600000) {
-          localStorage.removeItem('payrollpro_auth_user');
-          localStorage.removeItem('payrollpro_last_active_time');
+          sessionStorage.removeItem('payrollpro_auth_user');
+          sessionStorage.removeItem('payrollpro_last_active_time');
           return null;
         }
+        // Save into current tab's sessionStorage for tab isolation
+        sessionStorage.setItem('payrollpro_auth_user', saved);
+        sessionStorage.setItem('payrollpro_last_active_time', lastActive);
         return JSON.parse(saved);
       }
     } catch {}
@@ -47,6 +51,8 @@ export default function App() {
 
   const handleLoginSuccess = (user: AuthUser) => {
     setAuthUser(user);
+    sessionStorage.setItem('payrollpro_auth_user', JSON.stringify(user));
+    sessionStorage.setItem('payrollpro_last_active_time', Date.now().toString());
     localStorage.setItem('payrollpro_auth_user', JSON.stringify(user));
     localStorage.setItem('payrollpro_last_active_time', Date.now().toString());
     if (user.role === 'super_admin') {
@@ -59,8 +65,10 @@ export default function App() {
 
   const handleLogout = (msg?: string) => {
     setAuthUser(null);
-    localStorage.removeItem('payrollpro_auth_user');
-    localStorage.removeItem('payrollpro_last_active_time');
+    // Remove session ONLY from current browser tab so other tabs remain signed in
+    sessionStorage.removeItem('payrollpro_auth_user');
+    sessionStorage.removeItem('payrollpro_active_tenant');
+    sessionStorage.removeItem('payrollpro_last_active_time');
     if (msg) {
       alert(msg);
     }
@@ -71,7 +79,9 @@ export default function App() {
     if (!authUser) return;
 
     const updateActivity = () => {
-      localStorage.setItem('payrollpro_last_active_time', Date.now().toString());
+      const now = Date.now().toString();
+      sessionStorage.setItem('payrollpro_last_active_time', now);
+      localStorage.setItem('payrollpro_last_active_time', now);
     };
 
     window.addEventListener('mousemove', updateActivity);
@@ -81,7 +91,7 @@ export default function App() {
     window.addEventListener('touchstart', updateActivity);
 
     const interval = setInterval(() => {
-      const lastActive = localStorage.getItem('payrollpro_last_active_time');
+      const lastActive = sessionStorage.getItem('payrollpro_last_active_time') || localStorage.getItem('payrollpro_last_active_time');
       if (lastActive) {
         const elapsed = Date.now() - parseInt(lastActive, 10);
         if (elapsed >= 3600000) {

@@ -57,6 +57,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
       if (res && res.success && res.user) {
         if (res.user.tenantId && res.user.tenantId !== 'platform_master') {
+          sessionStorage.setItem('payrollpro_active_tenant', res.user.tenantId);
           localStorage.setItem('payrollpro_active_tenant', res.user.tenantId);
         }
         onLoginSuccess(res.user);
