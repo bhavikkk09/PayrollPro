@@ -163,56 +163,64 @@ export const LeaveManagement: React.FC = () => {
           </h3>
 
           <div className="space-y-3">
-            {requests.map((req) => (
-              <div
-                key={req.id}
-                className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-xs"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-slate-900 text-sm">{req.employeeName}</span>
-                    <span className="text-slate-400 font-mono">({req.employeeId})</span>
-                    <span className="px-2 py-0.5 rounded-full font-bold bg-indigo-100 text-indigo-800 text-[10px]">
-                      {req.leaveType}
-                    </span>
-                  </div>
-
-                  <div className="text-slate-600">
-                    Duration: <span className="font-semibold text-slate-800">{req.fromDate}</span> to{' '}
-                    <span className="font-semibold text-slate-800">{req.toDate}</span> ({req.totalDays} days)
-                  </div>
-
-                  <p className="text-slate-500 italic">"Reason: {req.reason}"</p>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  {req.status.includes('Pending') ? (
-                    <>
-                      <button
-                        onClick={() => handleApprove(req.id)}
-                        className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        onClick={() => handleReject(req.id)}
-                        className="px-3.5 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl"
-                      >
-                        Reject
-                      </button>
-                    </>
-                  ) : (
-                    <span
-                      className={`font-bold px-3 py-1 rounded-full text-xs ${
-                        req.status === 'Approved' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-                      }`}
-                    >
-                      {req.status}
-                    </span>
-                  )}
-                </div>
+            {requests.length === 0 ? (
+              <div className="p-8 text-center bg-slate-50 rounded-xl border border-slate-200 text-slate-500 text-xs font-medium space-y-1">
+                <Clock className="w-6 h-6 text-indigo-500 mx-auto mb-1" />
+                <div className="font-bold text-slate-800 text-sm">No Leave Applications</div>
+                <p className="text-slate-500">There are zero pending leave applications for this workspace.</p>
               </div>
-            ))}
+            ) : (
+              requests.map((req) => (
+                <div
+                  key={req.id}
+                  className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-xs"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-slate-900 text-sm">{req.employeeName}</span>
+                      <span className="text-slate-400 font-mono">({req.employeeId})</span>
+                      <span className="px-2 py-0.5 rounded-full font-bold bg-indigo-100 text-indigo-800 text-[10px]">
+                        {req.leaveType}
+                      </span>
+                    </div>
+
+                    <div className="text-slate-600">
+                      Duration: <span className="font-semibold text-slate-800">{req.fromDate}</span> to{' '}
+                      <span className="font-semibold text-slate-800">{req.toDate}</span> ({req.totalDays} days)
+                    </div>
+
+                    <p className="text-slate-500 italic">"Reason: {req.reason}"</p>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    {req.status.includes('Pending') ? (
+                      <>
+                        <button
+                          onClick={() => handleApprove(req.id)}
+                          className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => handleReject(req.id)}
+                          className="px-3.5 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl"
+                        >
+                          Reject
+                        </button>
+                      </>
+                    ) : (
+                      <span
+                        className={`font-bold px-3 py-1 rounded-full text-xs ${
+                          req.status === 'Approved' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                        }`}
+                      >
+                        {req.status}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}

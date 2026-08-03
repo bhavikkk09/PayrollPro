@@ -82,73 +82,42 @@ export const api = {
         body: JSON.stringify(employee)
       });
       return await res.json();
-    } catch (err) {
-      return { success: false, error: 'Network error' };
+    } catch {
+      return { success: false };
     }
   },
 
-  async updateEmployee(id: string, updates: Partial<Employee> & { customComponents?: Record<string, number> }) {
+  async updateEmployee(id: string, employee: Partial<Employee>) {
     try {
       const res = await fetch(`/api/employees/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates)
+        headers: getTenantHeader(),
+        body: JSON.stringify(employee)
       });
       return await res.json();
-    } catch (err) {
+    } catch {
       return { success: false };
     }
   },
 
-  async deleteEmployee(id: string) {
+  // Custom Components
+  async getCustomComponents(employeeId: string) {
     try {
-      const res = await fetch(`/api/employees/${id}`, { method: 'DELETE' });
-      return await res.json();
-    } catch (err) {
-      return { success: false };
-    }
-  },
-
-  // Salary Components CRUD
-  async getSalaryComponents() {
-    try {
-      const res = await fetch('/api/masters/components');
+      const res = await fetch(`/api/employees/${employeeId}/components`, { headers: getTenantHeader() });
       const data = await res.json();
-      return data.components as SalaryComponent[];
+      return data.components as Record<string, number>;
     } catch {
-      return null;
+      return {};
     }
   },
 
-  async createSalaryComponent(component: Partial<SalaryComponent>) {
+  async saveCustomComponents(employeeId: string, components: Record<string, number>) {
     try {
-      const res = await fetch('/api/masters/components', {
+      const res = await fetch(`/api/employees/${employeeId}/components`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(component)
+        headers: getTenantHeader(),
+        body: JSON.stringify({ components })
       });
-      return await res.json();
-    } catch {
-      return { success: false };
-    }
-  },
-
-  async updateSalaryComponent(id: string, updates: Partial<SalaryComponent>) {
-    try {
-      const res = await fetch(`/api/masters/components/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates)
-      });
-      return await res.json();
-    } catch {
-      return { success: false };
-    }
-  },
-
-  async deleteSalaryComponent(id: string) {
-    try {
-      const res = await fetch(`/api/masters/components/${id}`, { method: 'DELETE' });
       return await res.json();
     } catch {
       return { success: false };
@@ -156,21 +125,22 @@ export const api = {
   },
 
   // Attendance
-  async getAttendance() {
+  async getAttendanceGrid(month = '2026-07') {
     try {
-      const res = await fetch('/api/attendance');
-      return await res.json();
+      const res = await fetch(`/api/attendance/grid?month=${month}`, { headers: getTenantHeader() });
+      const data = await res.json();
+      return data.grid;
     } catch {
       return null;
     }
   },
 
-  async updateAttendanceCell(update: { employeeId: string; day: string; status: string; otHours?: number }) {
+  async updateAttendanceStatus(employeeId: string, date: string, status: string) {
     try {
-      const res = await fetch('/api/attendance/update-cell', {
+      const res = await fetch('/api/attendance/status', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(update)
+        headers: getTenantHeader(),
+        body: JSON.stringify({ employeeId, date, status })
       });
       return await res.json();
     } catch {
@@ -178,36 +148,39 @@ export const api = {
     }
   },
 
-  async importBiometrics() {
+  async bulkUpdateAttendance(updates: Array<{ employeeId: string; date: string; status: string }>) {
     try {
-      const res = await fetch('/api/attendance/bulk-import', { method: 'POST' });
+      const res = await fetch('/api/attendance/bulk', {
+        method: 'POST',
+        headers: getTenantHeader(),
+        body: JSON.stringify({ updates })
+      });
       return await res.json();
     } catch {
       return { success: false };
     }
   },
 
-  async importMonthlyAttendanceCSV(records: Array<{ employeeId: string; dayStatuses: Record<string, string> }>) {
+  async syncBiometricLogs() {
     try {
-      const res = await fetch('/api/attendance/bulk-import-month', {
+      const res = await fetch('/api/attendance/biometric-sync', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ month: 'July 2026', records })
+        headers: getTenantHeader()
       });
       return await res.json();
     } catch {
-      return { success: false };
+      return { success: false, syncedCount: 0 };
     }
   },
 
   // Leave Requests
   async getLeaveRequests() {
     try {
-      const res = await fetch('/api/leave/requests');
+      const res = await fetch('/api/leave/requests', { headers: getTenantHeader() });
       const data = await res.json();
       return data.requests as LeaveRequest[];
     } catch {
-      return null;
+      return [];
     }
   },
 
@@ -215,7 +188,7 @@ export const api = {
     try {
       const res = await fetch('/api/leave/request', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getTenantHeader(),
         body: JSON.stringify(request)
       });
       return await res.json();
@@ -228,7 +201,7 @@ export const api = {
     try {
       const res = await fetch(`/api/leave/requests/${id}/status`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getTenantHeader(),
         body: JSON.stringify({ status })
       });
       return await res.json();
@@ -240,11 +213,11 @@ export const api = {
   // Payroll
   async getPayrollBatches() {
     try {
-      const res = await fetch('/api/payroll/batches');
+      const res = await fetch('/api/payroll/batches', { headers: getTenantHeader() });
       const data = await res.json();
       return data.batches as PayrollBatch[];
     } catch {
-      return null;
+      return [];
     }
   },
 
@@ -252,7 +225,7 @@ export const api = {
     try {
       const res = await fetch('/api/payroll/process', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getTenantHeader(),
         body: JSON.stringify({ step, batchId })
       });
       return await res.json();
@@ -264,7 +237,7 @@ export const api = {
   // Reports
   async getPayRegisterReport() {
     try {
-      const res = await fetch('/api/reports/pay-register');
+      const res = await fetch('/api/reports/pay-register', { headers: getTenantHeader() });
       return await res.json();
     } catch {
       return null;
@@ -273,7 +246,7 @@ export const api = {
 
   async getPfSummaryReport() {
     try {
-      const res = await fetch('/api/reports/pf-summary');
+      const res = await fetch('/api/reports/pf-summary', { headers: getTenantHeader() });
       return await res.json();
     } catch {
       return null;
@@ -282,7 +255,7 @@ export const api = {
 
   async getEsiSummaryReport() {
     try {
-      const res = await fetch('/api/reports/esi-summary');
+      const res = await fetch('/api/reports/esi-summary', { headers: getTenantHeader() });
       return await res.json();
     } catch {
       return null;
@@ -291,7 +264,7 @@ export const api = {
 
   async getPtSummaryReport() {
     try {
-      const res = await fetch('/api/reports/pt-summary');
+      const res = await fetch('/api/reports/pt-summary', { headers: getTenantHeader() });
       return await res.json();
     } catch {
       return null;
@@ -301,11 +274,11 @@ export const api = {
   // Compliance
   async getComplianceItems() {
     try {
-      const res = await fetch('/api/compliance/items');
+      const res = await fetch('/api/compliance/items', { headers: getTenantHeader() });
       const data = await res.json();
       return data.items as ComplianceDueItem[];
     } catch {
-      return null;
+      return [];
     }
   },
 
@@ -313,7 +286,7 @@ export const api = {
     try {
       const res = await fetch('/api/compliance/file-return', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getTenantHeader(),
         body: JSON.stringify({ itemId })
       });
       return await res.json();
@@ -325,7 +298,7 @@ export const api = {
   // Masters
   async getMasters() {
     try {
-      const res = await fetch('/api/masters');
+      const res = await fetch('/api/masters', { headers: getTenantHeader() });
       return await res.json();
     } catch {
       return null;
@@ -336,7 +309,7 @@ export const api = {
     try {
       const res = await fetch('/api/masters/branches', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getTenantHeader(),
         body: JSON.stringify(branch)
       });
       return await res.json();
@@ -349,7 +322,7 @@ export const api = {
     try {
       const res = await fetch('/api/masters/departments', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getTenantHeader(),
         body: JSON.stringify({ name })
       });
       return await res.json();
@@ -361,7 +334,7 @@ export const api = {
   // Integrations
   async getIntegrations() {
     try {
-      const res = await fetch('/api/integrations');
+      const res = await fetch('/api/integrations', { headers: getTenantHeader() });
       return await res.json();
     } catch {
       return null;
@@ -372,7 +345,7 @@ export const api = {
     try {
       const res = await fetch('/api/integrations/toggle', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getTenantHeader(),
         body: JSON.stringify({ id })
       });
       return await res.json();
@@ -384,7 +357,7 @@ export const api = {
   // Settings
   async getSettings() {
     try {
-      const res = await fetch('/api/settings');
+      const res = await fetch('/api/settings', { headers: getTenantHeader() });
       return await res.json();
     } catch {
       return null;
@@ -395,7 +368,7 @@ export const api = {
     try {
       const res = await fetch('/api/settings/update', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getTenantHeader(),
         body: JSON.stringify(settings)
       });
       return await res.json();
@@ -452,7 +425,7 @@ export const api = {
   // Statutory Registers
   async getStatutoryRegisterOptions() {
     try {
-      const res = await fetch('/api/registers/options');
+      const res = await fetch('/api/registers/options', { headers: getTenantHeader() });
       return await res.json();
     } catch {
       return null;
@@ -463,7 +436,7 @@ export const api = {
     try {
       const res = await fetch('/api/registers/render', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getTenantHeader(),
         body: JSON.stringify(params)
       });
       return await res.json();
