@@ -292,7 +292,7 @@ export const SuperAdminPortal: React.FC = () => {
     localStorage.setItem('payrollpro_auth_user', authPayload);
     localStorage.setItem('payrollpro_last_active_time', Date.now().toString());
 
-    const targetUrl = `http://localhost:3000/?tenant=${cleanCode}`;
+    const targetUrl = `http://localhost:3000/${cleanCode}/dashboard`;
     showToast(`Opening Tenant Workspace: ${companyTitle} (${targetUrl})`);
     setTimeout(() => {
       window.open(targetUrl, '_blank');

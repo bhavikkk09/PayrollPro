@@ -49,17 +49,52 @@ export default function App() {
     return null;
   });
 
+  // Helper to extract active tenant and active section from URL path
+  const parseUrlPath = () => {
+    const pathname = window.location.pathname.replace(/^\/+|\/+$/g, '');
+    const segments = pathname.split('/').filter(Boolean);
+    const queryParams = new URLSearchParams(window.location.search);
+    const querySection = queryParams.get('section');
+    const queryTenant = queryParams.get('tenant');
+
+    const isAdmin = pathname === 'admin' || pathname === 'superadmin' || queryParams.get('admin') === 'true';
+
+    let tenant = queryTenant || sessionStorage.getItem('payrollpro_active_tenant') || localStorage.getItem('payrollpro_active_tenant') || 'apex';
+    let section: NavigationSection = 'dashboard';
+
+    if (segments.length >= 1 && segments[0] !== 'admin' && segments[0] !== 'superadmin' && !segments[0].startsWith('api')) {
+      tenant = segments[0].toLowerCase().replace(/[^a-z0-9-]/g, '');
+      if (segments.length >= 2) {
+        section = segments[1] as NavigationSection;
+      } else if (querySection) {
+        section = querySection as NavigationSection;
+      }
+    } else if (querySection) {
+      section = querySection as NavigationSection;
+    }
+
+    return { isAdmin, tenant, section };
+  };
+
+  const initialRoute = parseUrlPath();
+
   const handleLoginSuccess = (user: AuthUser) => {
     setAuthUser(user);
     sessionStorage.setItem('payrollpro_auth_user', JSON.stringify(user));
     sessionStorage.setItem('payrollpro_last_active_time', Date.now().toString());
     localStorage.setItem('payrollpro_auth_user', JSON.stringify(user));
     localStorage.setItem('payrollpro_last_active_time', Date.now().toString());
+
     if (user.role === 'super_admin') {
       setIsAdminView(true);
+      window.history.pushState({ admin: true }, '', '/admin');
     } else {
+      const tenantCode = (user.tenantId || 'apex').toLowerCase().replace(/[^a-z0-9-]/g, '');
+      sessionStorage.setItem('payrollpro_active_tenant', tenantCode);
+      localStorage.setItem('payrollpro_active_tenant', tenantCode);
       setIsAdminView(false);
       setActiveSection('dashboard');
+      window.history.pushState({ tenant: tenantCode, section: 'dashboard' }, '', `/${tenantCode}/dashboard`);
     }
   };
 
@@ -110,7 +145,7 @@ export default function App() {
     };
   }, [authUser]);
 
-  const [activeSection, setActiveSection] = useState<NavigationSection>('dashboard');
+  const [activeSection, setActiveSection] = useState<NavigationSection>(initialRoute.section);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
   const [employeesList, setEmployeesList] = useState<Employee[]>([]);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
@@ -125,33 +160,28 @@ export default function App() {
   const [selectedBranch, setSelectedBranch] = useState('ALL');
 
   // Dedicated SuperAdmin URL routing logic (Isolates Super Admin from Company Tenants)
-  const [isAdminView, setIsAdminView] = useState<boolean>(() => {
-    return (
-      window.location.pathname === '/admin' ||
-      window.location.pathname === '/superadmin' ||
-      window.location.search.includes('admin=true')
-    );
-  });
+  const [isAdminView, setIsAdminView] = useState<boolean>(initialRoute.isAdmin);
 
   const handleSelectSection = (section: NavigationSection) => {
     setActiveSection(section);
     setSelectedEmployeeId(null);
+    const tenant = (authUser?.tenantId || sessionStorage.getItem('payrollpro_active_tenant') || initialRoute.tenant || 'apex').toLowerCase().replace(/[^a-z0-9-]/g, '');
+    const cleanPath = `/${tenant}/${section}`;
     try {
-      window.history.pushState({ section }, '', `?section=${section}`);
+      window.history.pushState({ section, tenant }, '', cleanPath);
     } catch {}
   };
 
   useEffect(() => {
     const handlePopState = (e: PopStateEvent) => {
-      setIsAdminView(
-        window.location.pathname === '/admin' ||
-        window.location.pathname === '/superadmin' ||
-        window.location.search.includes('admin=true')
-      );
-      if (e.state?.section) {
-        setActiveSection(e.state.section);
-        setSelectedEmployeeId(null);
+      const route = parseUrlPath();
+      setIsAdminView(route.isAdmin);
+      if (route.tenant) {
+        sessionStorage.setItem('payrollpro_active_tenant', route.tenant);
+        localStorage.setItem('payrollpro_active_tenant', route.tenant);
       }
+      setActiveSection(route.section);
+      setSelectedEmployeeId(null);
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
