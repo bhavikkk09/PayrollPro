@@ -27,28 +27,6 @@ import { api } from './services/api';
 
 export default function App() {
   // Authentication & 1-Hour Session Security State
-  const [authUser, setAuthUser] = useState<AuthUser | null>(() => {
-    try {
-      // Prioritize tab-scoped sessionStorage, falling back to localStorage
-      const saved = sessionStorage.getItem('payrollpro_auth_user') || localStorage.getItem('payrollpro_auth_user');
-      const lastActive = sessionStorage.getItem('payrollpro_last_active_time') || localStorage.getItem('payrollpro_last_active_time');
-      if (saved && lastActive) {
-        const elapsed = Date.now() - parseInt(lastActive, 10);
-        // 1 Hour = 3600000 ms
-        if (elapsed >= 3600000) {
-          sessionStorage.removeItem('payrollpro_auth_user');
-          sessionStorage.removeItem('payrollpro_last_active_time');
-          return null;
-        }
-        // Save into current tab's sessionStorage for tab isolation
-        sessionStorage.setItem('payrollpro_auth_user', saved);
-        sessionStorage.setItem('payrollpro_last_active_time', lastActive);
-        return JSON.parse(saved);
-      }
-    } catch {}
-    return null;
-  });
-
   // Helper to extract active tenant and active section from URL path
   const parseUrlPath = () => {
     const pathname = window.location.pathname.replace(/^\/+|\/+$/g, '');
@@ -59,7 +37,7 @@ export default function App() {
 
     const isAdmin = pathname === 'admin' || pathname === 'superadmin' || queryParams.get('admin') === 'true';
 
-    let tenant = queryTenant || sessionStorage.getItem('payrollpro_active_tenant') || localStorage.getItem('payrollpro_active_tenant') || 'apex';
+    let tenant = queryTenant || sessionStorage.getItem('payrollpro_active_tenant') || 'apex';
     let section: NavigationSection = 'dashboard';
 
     if (segments.length >= 1 && segments[0] !== 'admin' && segments[0] !== 'superadmin' && !segments[0].startsWith('api')) {
@@ -77,6 +55,28 @@ export default function App() {
   };
 
   const initialRoute = parseUrlPath();
+
+  // Authentication & 1-Hour Session Security State (Strict Tab-Scoped Auth Guard)
+  const [authUser, setAuthUser] = useState<AuthUser | null>(() => {
+    try {
+      const saved = sessionStorage.getItem('payrollpro_auth_user');
+      const lastActive = sessionStorage.getItem('payrollpro_last_active_time');
+      if (saved && lastActive) {
+        const elapsed = Date.now() - parseInt(lastActive, 10);
+        if (elapsed >= 3600000) {
+          sessionStorage.removeItem('payrollpro_auth_user');
+          sessionStorage.removeItem('payrollpro_last_active_time');
+          return null;
+        }
+        const user: AuthUser = JSON.parse(saved);
+        // Verify session matches target URL tenant or is Super Admin
+        if (user.role === 'super_admin' || initialRoute.isAdmin || !initialRoute.tenant || user.tenantId === initialRoute.tenant) {
+          return user;
+        }
+      }
+    } catch {}
+    return null;
+  });
 
   const handleLoginSuccess = (user: AuthUser) => {
     setAuthUser(user);
@@ -241,7 +241,7 @@ export default function App() {
 
   // Render Login Page if user is not authenticated
   if (!authUser) {
-    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+    return <LoginPage onLoginSuccess={handleLoginSuccess} initialTenantCode={initialRoute.tenant} />;
   }
 
   // Standalone Isolated SuperAdmin Portal View (runs at http://localhost:3000/admin)

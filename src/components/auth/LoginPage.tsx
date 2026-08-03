@@ -24,13 +24,14 @@ export interface AuthUser {
 
 interface LoginPageProps {
   onLoginSuccess: (user: AuthUser) => void;
+  initialTenantCode?: string;
 }
 
-export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
+export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, initialTenantCode }) => {
   const [loginRole, setLoginRole] = useState<'company' | 'superadmin'>('company');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [tenantCode, setTenantCode] = useState('apex');
+  const [tenantCode, setTenantCode] = useState(initialTenantCode || 'apex');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
