@@ -14,7 +14,6 @@ import {
   Building2,
   FileText
 } from 'lucide-react';
-import { sampleEmployees } from '../../data/mockData';
 import { api } from '../../services/api';
 
 export const PayrollWizard: React.FC = () => {
@@ -24,15 +23,20 @@ export const PayrollWizard: React.FC = () => {
   const [financeApproved, setFinanceApproved] = useState(false);
   const [directorApproved, setDirectorApproved] = useState(false);
   const [employees, setEmployees] = useState<any[]>([]);
+  const [payrollBatch, setPayrollBatch] = useState<any>(null);
 
   React.useEffect(() => {
-    async function loadEmps() {
-      const data = await api.getEmployees();
-      if (Array.isArray(data)) {
-        setEmployees(data);
+    async function loadData() {
+      const emps = await api.getEmployees();
+      if (Array.isArray(emps)) {
+        setEmployees(emps);
+      }
+      const batch = await api.calculatePayrollBatch('July 2026', 2026);
+      if (batch) {
+        setPayrollBatch(batch);
       }
     }
-    loadEmps();
+    loadData();
   }, []);
 
   const steps = [
@@ -57,11 +61,11 @@ export const PayrollWizard: React.FC = () => {
     if (currentStep > 1) setCurrentStep((prev) => prev - 1);
   };
 
-  const totalGross = employees.reduce((acc, e) => acc + (e.grossSalary || 0), 0);
-  const totalPF = employees.reduce((acc, e) => acc + (e.isPfApplicable !== false ? Math.min(e.basicSalary || 0, 15000) * 0.12 : 0), 0);
-  const totalPT = employees.reduce((acc, e) => acc + (e.isPtApplicable !== false && (e.grossSalary || 0) > 10000 ? 200 : 0), 0);
-  const totalTDS = employees.reduce((acc, e) => acc + Math.round((e.grossSalary || 0) * 0.08), 0);
-  const totalNet = totalGross - (totalPF + totalPT + totalTDS);
+  const totalGross = payrollBatch?.totalGrossPay ?? employees.reduce((acc, e) => acc + (e.grossSalary || 0), 0);
+  const totalPF = payrollBatch?.totalPF ?? employees.reduce((acc, e) => acc + (e.isPfApplicable !== false ? Math.min(e.basicSalary || 0, 15000) * 0.12 : 0), 0);
+  const totalPT = payrollBatch?.totalPT ?? employees.reduce((acc, e) => acc + (e.isPtApplicable !== false && (e.grossSalary || 0) > 10000 ? 200 : 0), 0);
+  const totalTDS = payrollBatch?.totalTDS ?? employees.reduce((acc, e) => acc + Math.round((e.grossSalary || 0) * 0.08), 0);
+  const totalNet = payrollBatch?.totalNetPay ?? (totalGross - (totalPF + totalPT + totalTDS));
 
   return (
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 max-w-7xl mx-auto">

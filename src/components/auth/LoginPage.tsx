@@ -35,51 +35,38 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
     setIsLoading(true);
 
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
       if (!email.trim()) {
+        setIsLoading(false);
         setErrorMsg('Please enter a valid email or username.');
         return;
       }
       if (!password.trim()) {
+        setIsLoading(false);
         setErrorMsg('Please enter your account password.');
         return;
       }
 
-      if (loginRole === 'superadmin') {
-        const user: AuthUser = {
-          email: email || 'superadmin@payrollpro.com',
-          name: 'Super Admin Control Plane',
-          role: 'super_admin',
-          tenantId: 'platform_master',
-          token: `token_${Date.now()}`
-        };
-        onLoginSuccess(user);
-      } else {
-        const normalizedCode = (tenantCode || 'apex').toLowerCase().replace(/[^a-z0-9-]/g, '') || 'apex';
-        let formattedTenantName = tenantCode ? tenantCode.charAt(0).toUpperCase() + tenantCode.slice(1) : 'Apex';
-        if (!formattedTenantName.toLowerCase().includes('pvt') && !formattedTenantName.toLowerCase().includes('ltd')) {
-          formattedTenantName += ' Pvt. Ltd.';
+      const res = await api.login(email, password, loginRole === 'superadmin' ? 'platform_master' : tenantCode);
+      setIsLoading(false);
+
+      if (res && res.success && res.user) {
+        if (res.user.tenantId && res.user.tenantId !== 'platform_master') {
+          localStorage.setItem('payrollpro_active_tenant', res.user.tenantId);
         }
-
-        localStorage.setItem('payrollpro_active_tenant', normalizedCode);
-
-        const user: AuthUser = {
-          email: email || `hr@${normalizedCode}.in`,
-          name: 'HR Manager',
-          role: 'company_admin',
-          tenantId: normalizedCode,
-          tenantName: formattedTenantName,
-          token: `token_${Date.now()}`
-        };
-        onLoginSuccess(user);
+        onLoginSuccess(res.user);
+      } else {
+        setErrorMsg(res.message || 'Authentication failed. Please check credentials.');
       }
-    }, 600);
+    } catch {
+      setIsLoading(false);
+      setErrorMsg('Could not connect to authentication server.');
+    }
   };
 
   const handleQuickDemoLogin = (role: 'company' | 'superadmin') => {

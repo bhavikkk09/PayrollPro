@@ -8,16 +8,17 @@ function getTenantHeader(): Record<string, string> {
   const pathTenant = (pathname && pathname !== 'admin' && pathname !== 'superadmin' && !pathname.startsWith('api')) ? pathname : null;
   
   let savedTenant: string | null = null;
+  let token: string | null = null;
+
   try {
     savedTenant = localStorage.getItem('payrollpro_active_tenant');
-    if (!savedTenant) {
-      const auth = localStorage.getItem('payrollpro_auth_user');
-      if (auth) {
-        const parsed = JSON.parse(auth);
-        if (parsed.tenantId && parsed.tenantId !== 'platform_master') {
-          savedTenant = parsed.tenantId;
-        }
+    const auth = localStorage.getItem('payrollpro_auth_user');
+    if (auth) {
+      const parsed = JSON.parse(auth);
+      if (parsed.tenantId && parsed.tenantId !== 'platform_master' && !savedTenant) {
+        savedTenant = parsed.tenantId;
       }
+      if (parsed.token) token = parsed.token;
     }
   } catch {}
 
@@ -25,13 +26,43 @@ function getTenantHeader(): Record<string, string> {
     .toLowerCase()
     .replace(/[^a-z0-9-]/g, '');
 
-  return {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'x-tenant-id': tenant || 'apex'
   };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  return headers;
 }
 
 export const api = {
+  // Authentication
+  async login(email: string, password: string, tenantCode?: string) {
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, tenantCode })
+      });
+      return await res.json();
+    } catch {
+      return { success: false, message: 'Server connection error during login' };
+    }
+  },
+
+  // Audit Logs
+  async getAuditLogs() {
+    try {
+      const res = await fetch('/api/audit-logs', { headers: getTenantHeader() });
+      return await res.json();
+    } catch {
+      return { success: false, logs: [] };
+    }
+  },
+
   // Tenant Info & Branding
   async getTenantInfo() {
     try {
@@ -48,12 +79,12 @@ export const api = {
       const res = await fetch('/api/health', { headers: getTenantHeader() });
       return await res.json();
     } catch {
-      return { status: 'offline', app: 'Frappe HRMS' };
+      return { status: 'offline', app: 'PayrollPro HRMS' };
     }
   },
 
   // Employees
-  async getEmployees(params?: { branch?: string; department?: string; status?: string; query?: string }) {
+  async getEmployees(params?: { branch?: string; department?: string; status?: string; query?: string; unmask?: boolean }) {
     try {
       const queryParams = new URLSearchParams();
       const headers = getTenantHeader();
@@ -62,6 +93,7 @@ export const api = {
       if (params?.department) queryParams.append('department', params.department);
       if (params?.status) queryParams.append('status', params.status);
       if (params?.query) queryParams.append('query', params.query);
+      if (params?.unmask) queryParams.append('unmask', 'true');
 
       const res = await fetch(`/api/employees?${queryParams.toString()}`, {
         headers: getTenantHeader()
@@ -69,7 +101,7 @@ export const api = {
       const data = await res.json();
       return data.employees as (Employee & { customComponents?: Record<string, number> })[];
     } catch (err) {
-      console.warn('Backend API offline, falling back to local state:', err);
+      console.warn('Backend API offline, returning empty:', err);
       return [];
     }
   },
@@ -210,7 +242,7 @@ export const api = {
     }
   },
 
-  // Payroll
+  // Payroll Engine
   async getPayrollBatches() {
     try {
       const res = await fetch('/api/payroll/batches', { headers: getTenantHeader() });
@@ -218,6 +250,20 @@ export const api = {
       return data.batches as PayrollBatch[];
     } catch {
       return [];
+    }
+  },
+
+  async calculatePayrollBatch(month = 'July 2026', year = 2026) {
+    try {
+      const res = await fetch('/api/payroll/calculate', {
+        method: 'POST',
+        headers: getTenantHeader(),
+        body: JSON.stringify({ month, year })
+      });
+      const data = await res.json();
+      return data.batch as PayrollBatch;
+    } catch {
+      return null;
     }
   },
 
@@ -387,7 +433,7 @@ export const api = {
     }
   },
 
-  async createTenant(tenant: { name: string; domain: string; plan: string; region: string; maxEmployees: number }) {
+  async createTenant(tenant: { name: string; domain: string; plan: string; region: string; maxEmployees: number; demoData?: boolean }) {
     try {
       const res = await fetch('/api/superadmin/tenants', {
         method: 'POST',

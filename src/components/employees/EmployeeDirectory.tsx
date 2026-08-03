@@ -167,6 +167,16 @@ export const EmployeeDirectory: React.FC<EmployeeDirectoryProps> = ({
           </button>
 
           <button
+            onClick={() => {
+              showToast("PII Data Protection Active: PAN, Aadhaar & Bank Account Numbers masked for general security.");
+            }}
+            className="flex items-center gap-1.5 px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+          >
+            <Shield className="w-4 h-4 text-amber-600" />
+            PII Protected
+          </button>
+
+          <button
             onClick={() => setIsImportModalOpen(true)}
             className="flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-semibold rounded-xl text-xs shadow-2xs transition-all cursor-pointer"
           >
