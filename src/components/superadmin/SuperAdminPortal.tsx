@@ -133,6 +133,7 @@ export const SuperAdminPortal: React.FC = () => {
     subdomain: '',
     plan: 'Growth' as Tenant['plan'],
     adminEmail: '',
+    adminPassword: 'password123',
     adminName: '',
     employeeLimit: 250,
     country: 'India',
@@ -238,10 +239,13 @@ export const SuperAdminPortal: React.FC = () => {
           // Notify REST API
           await api.createTenant({
             name: newTenantForm.name,
-            domain: `localhost:3000/?tenant=${newTenantForm.subdomain}`,
+            domain: newTenantForm.subdomain,
             plan: newTenantForm.plan,
+            adminEmail: newTenantForm.adminEmail,
+            adminPassword: newTenantForm.adminPassword,
             region: 'local-dev-mumbai',
-            maxEmployees: newTenantForm.employeeLimit
+            maxEmployees: newTenantForm.employeeLimit,
+            demoData: newTenantForm.demoData
           });
         }
       }, (index + 1) * 1200);
@@ -833,10 +837,10 @@ export const SuperAdminPortal: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
                       <label className="block font-semibold text-slate-700 mb-1">
-                        Initial Administrator Email *
+                        Initial Admin Email *
                       </label>
                       <input
                         type="email"
@@ -844,6 +848,19 @@ export const SuperAdminPortal: React.FC = () => {
                         onChange={(e) => setNewTenantForm({ ...newTenantForm, adminEmail: e.target.value })}
                         placeholder="admin@acme.com"
                         className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-slate-900 font-medium"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">
+                        Initial Admin Password *
+                      </label>
+                      <input
+                        type="text"
+                        value={newTenantForm.adminPassword}
+                        onChange={(e) => setNewTenantForm({ ...newTenantForm, adminPassword: e.target.value })}
+                        placeholder="Set Admin Password"
+                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-slate-900 font-mono font-bold"
                       />
                     </div>
 
@@ -925,19 +942,33 @@ export const SuperAdminPortal: React.FC = () => {
               )}
 
               {provisioningStep === 3 && (
-                <div className="p-6 bg-emerald-50 rounded-2xl border border-emerald-200 text-center space-y-3 text-xs">
+                <div className="p-6 bg-emerald-50 rounded-2xl border border-emerald-200 text-center space-y-4 text-xs">
                   <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto" />
                   <h3 className="text-base font-bold text-emerald-950">
-                    Tenant Successfully Provisioned on GCP!
+                    Tenant Successfully Provisioned!
                   </h3>
-                  <p className="text-emerald-800">
-                    Subdomain: <code className="font-bold bg-white px-2 py-0.5 rounded border border-emerald-300">{newTenantForm.subdomain}.payrollpro.in</code>
-                  </p>
-                  <div className="pt-3">
+                  <div className="p-4 bg-white rounded-xl border border-emerald-200 text-left space-y-2 font-mono">
+                    <div><span className="text-slate-500">Workspace URL:</span> <strong className="text-indigo-700">http://localhost:3000/{newTenantForm.subdomain}/dashboard</strong></div>
+                    <div><span className="text-slate-500">Tenant Code / ID:</span> <strong className="text-slate-900">{newTenantForm.subdomain}</strong></div>
+                    <div><span className="text-slate-500">Company Name:</span> <strong className="text-slate-900">{newTenantForm.name}</strong></div>
+                    <div><span className="text-slate-500">Admin Email:</span> <strong className="text-emerald-700">{newTenantForm.adminEmail}</strong></div>
+                    <div><span className="text-slate-500">Admin Password:</span> <strong className="text-amber-700">{newTenantForm.adminPassword}</strong></div>
+                  </div>
+                  <div className="pt-2 flex justify-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`URL: http://localhost:3000/${newTenantForm.subdomain}/dashboard\nEmail: ${newTenantForm.adminEmail}\nPassword: ${newTenantForm.adminPassword}`);
+                        showToast('Credentials copied to clipboard!');
+                      }}
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Copy className="w-4 h-4" /> Copy Login Credentials
+                    </button>
                     <button
                       type="button"
                       onClick={() => setIsProvisioningModalOpen(false)}
-                      className="px-6 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl shadow-xs cursor-pointer"
+                      className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl shadow-xs cursor-pointer"
                     >
                       Close & Return to Fleet
                     </button>

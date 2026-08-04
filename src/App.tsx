@@ -187,7 +187,15 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  const [currentCompanyName, setCurrentCompanyName] = useState<string>('Apex Enterprises Pvt. Ltd.');
+  const [currentCompanyName, setCurrentCompanyName] = useState<string>(() => {
+    if (authUser?.tenantName) return authUser.tenantName;
+    const tenant = initialRoute.tenant;
+    if (tenant === 'kaveri') return 'Kaveri Logistics Pvt. Ltd.';
+    if (tenant === 'smit') return 'Smit Infotech';
+    if (tenant === 'abc_mfg') return 'ABC Manufacturing Pvt. Ltd.';
+    if (tenant === 'apex') return 'Apex Enterprises India Pvt. Ltd.';
+    return tenant ? (tenant.charAt(0).toUpperCase() + tenant.slice(1) + ' Pvt. Ltd.') : 'Enterprise HR Suite';
+  });
   const [leaveRequestsList, setLeaveRequestsList] = useState<LeaveRequest[]>([]);
 
   // Load employees from Express REST API on mount / tenant change

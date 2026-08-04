@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Settings, Shield, Bell, User, Key, Save, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { Settings, Shield, Bell, User, Key, Save, CheckCircle2, ShieldCheck, Sliders } from 'lucide-react';
 import { AuditLogViewer } from './AuditLogViewer';
+import { CentralizedPolicyHub } from '../policies/CentralizedPolicyHub';
 import { api } from '../../services/api';
 
 export const SettingsView: React.FC = () => {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'settings' | 'audit'>('settings');
+  const [activeTab, setActiveTab] = useState<'settings' | 'policies' | 'audit'>('settings');
 
   const [apiKey, setApiKey] = useState('b47a92c109283f1d');
   const [apiSecret, setApiSecret] = useState('••••••••••••••••');
@@ -45,7 +46,7 @@ export const SettingsView: React.FC = () => {
         <div>
           <h2 className="text-xl font-bold text-slate-900 tracking-tight">System Settings & Governance</h2>
           <p className="text-xs text-slate-500 mt-1">
-            Configure system permissions, API integrations, and inspect immutable audit logs.
+            Configure system policies across 16 domains, API integrations, and inspect immutable audit logs.
           </p>
         </div>
 
@@ -59,20 +60,30 @@ export const SettingsView: React.FC = () => {
             System Settings
           </button>
           <button
+            onClick={() => setActiveTab('policies')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'policies' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
+            }`}
+          >
+            <Sliders className="w-3.5 h-3.5" />
+            Policy Engine (16 Domains)
+          </button>
+          <button
             onClick={() => setActiveTab('audit')}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+            className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'audit' ? 'bg-indigo-600 text-white shadow-xs' : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
             }`}
           >
-            <ShieldCheck className="w-4 h-4" />
-            Audit Logs
+            <ShieldCheck className="w-3.5 h-3.5" />
+            Audit Traceability Logs
           </button>
         </div>
       </div>
 
-      {activeTab === 'audit' ? (
-        <AuditLogViewer />
-      ) : (
+      {activeTab === 'policies' && <CentralizedPolicyHub />}
+      {activeTab === 'audit' && <AuditLogViewer />}
+      
+      {activeTab === 'settings' && (
         <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-6">
           <form onSubmit={handleSaveSettings} className="space-y-6">
             <div className="space-y-4">

@@ -89,9 +89,9 @@ export const EmployeeDirectory: React.FC<EmployeeDirectoryProps> = ({
       uanNumber: formData.isPfApplicable ? (formData.uanNumber || `1009${Math.floor(10000000 + Math.random() * 90000000)}`) : 'N/A (Exempt)',
       pfNumber: formData.isPfApplicable ? (formData.pfNumber || `MH/BAN/0049281/000/${Math.floor(100 + Math.random() * 900)}`) : 'N/A (Exempt)',
       esicNumber: formData.isEsiApplicable ? (formData.esicNumber || `3100${Math.floor(10000000 + Math.random() * 90000000)}`) : 'N/A (Exempt)',
-      bankAccount: `100${Math.floor(10000007 + Math.random() * 90000000)}`,
-      bankIfsc: 'HDFC0000123',
-      bankName: 'HDFC Bank',
+      bankAccount: formData.bankAccount || `100${Math.floor(10000007 + Math.random() * 90000000)}`,
+      bankIfsc: formData.bankIfsc || 'HDFC0000123',
+      bankName: formData.bankName || 'HDFC Bank',
       basicSalary: Number(formData.basicSalary),
       grossSalary: Number(formData.grossSalary),
       ctc: Number(formData.grossSalary) * 12 * 1.2,
@@ -115,9 +115,19 @@ export const EmployeeDirectory: React.FC<EmployeeDirectoryProps> = ({
       doj: new Date().toISOString().split('T')[0],
       employmentType: 'Full-Time',
       basicSalary: 35000,
+      hra: 17500,
+      specialAllowance: 15000,
+      conveyance: 2500,
+      medicalAllowance: 2500,
+      lta: 2500,
+      performanceBonus: 0,
       grossSalary: 75000,
       panNumber: '',
       aadhaarNumber: '',
+      bankName: 'HDFC Bank',
+      bankAccount: '',
+      bankIfsc: 'HDFC0000123',
+      salaryMode: 'Bank Transfer',
       isPfApplicable: true,
       isEsiApplicable: true,
       isPtApplicable: true,
@@ -534,28 +544,124 @@ export const EmployeeDirectory: React.FC<EmployeeDirectoryProps> = ({
               </div>
 
               <div className="p-3.5 sm:p-4 bg-slate-50 rounded-xl border border-slate-200/90 space-y-3">
-                <span className="font-bold text-slate-800 block text-[11px] uppercase tracking-wider">Salary Structure & Statutory Information</span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <span className="font-bold text-slate-800 block text-[11px] uppercase tracking-wider">Salary Structure & Components</span>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Basic Salary (Monthly ₹)</label>
+                    <label className="block font-semibold text-slate-700 mb-1">Basic Pay (Monthly ₹) *</label>
                     <input
                       type="number"
                       value={formData.basicSalary}
-                      onChange={(e) => setFormData({ ...formData, basicSalary: Number(e.target.value) })}
-                      className="w-full p-2.5 sm:p-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-hidden font-mono text-slate-900 text-sm sm:text-xs"
+                      onChange={(e) => {
+                        const basic = Number(e.target.value);
+                        const hra = Math.round(basic * 0.5);
+                        const special = Math.max(0, formData.grossSalary - (basic + hra));
+                        setFormData({ ...formData, basicSalary: basic, hra, specialAllowance: special });
+                      }}
+                      className="w-full p-2 bg-white border border-slate-200 rounded-lg font-mono text-xs focus:ring-2 focus:ring-indigo-500 outline-hidden"
                     />
                   </div>
 
                   <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Gross Salary (Monthly ₹)</label>
+                    <label className="block font-semibold text-slate-700 mb-1">House Rent Allowance (HRA ₹)</label>
+                    <input
+                      type="number"
+                      value={formData.hra || Math.round(formData.basicSalary * 0.5)}
+                      onChange={(e) => setFormData({ ...formData, hra: Number(e.target.value) })}
+                      className="w-full p-2 bg-white border border-slate-200 rounded-lg font-mono text-xs focus:ring-2 focus:ring-indigo-500 outline-hidden"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Special Allowance (Monthly ₹)</label>
+                    <input
+                      type="number"
+                      value={formData.specialAllowance || 15000}
+                      onChange={(e) => setFormData({ ...formData, specialAllowance: Number(e.target.value) })}
+                      className="w-full p-2 bg-white border border-slate-200 rounded-lg font-mono text-xs focus:ring-2 focus:ring-indigo-500 outline-hidden"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-200">
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Gross Salary (Monthly ₹) *</label>
                     <input
                       type="number"
                       value={formData.grossSalary}
                       onChange={(e) => setFormData({ ...formData, grossSalary: Number(e.target.value) })}
-                      className="w-full p-2.5 sm:p-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-hidden font-mono text-slate-900 text-sm sm:text-xs"
+                      className="w-full p-2 bg-white border border-slate-200 rounded-lg font-mono font-bold text-slate-900 text-xs focus:ring-2 focus:ring-indigo-500 outline-hidden"
                     />
                   </div>
 
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Annual CTC (Calculated ₹)</label>
+                    <input
+                      type="number"
+                      readOnly
+                      value={formData.grossSalary * 12}
+                      className="w-full p-2 bg-slate-100 border border-slate-200 rounded-lg font-mono font-bold text-indigo-700 text-xs outline-hidden"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Bank Details Section */}
+              <div className="p-3.5 sm:p-4 bg-slate-50 rounded-xl border border-slate-200/90 space-y-3">
+                <span className="font-bold text-slate-800 block text-[11px] uppercase tracking-wider">Employee Bank & Disbursement Details</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Bank Name *</label>
+                    <input
+                      type="text"
+                      value={formData.bankName || 'HDFC Bank'}
+                      onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
+                      placeholder="e.g. HDFC Bank, ICICI Bank, SBI"
+                      className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 outline-hidden"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Bank Account Number *</label>
+                    <input
+                      type="text"
+                      value={formData.bankAccount || ''}
+                      onChange={(e) => setFormData({ ...formData, bankAccount: e.target.value })}
+                      placeholder="50100123456789"
+                      className="w-full p-2 bg-white border border-slate-200 rounded-lg font-mono text-xs focus:ring-2 focus:ring-indigo-500 outline-hidden"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">IFSC Code *</label>
+                    <input
+                      type="text"
+                      value={formData.bankIfsc || ''}
+                      onChange={(e) => setFormData({ ...formData, bankIfsc: e.target.value.toUpperCase() })}
+                      placeholder="HDFC0000123"
+                      className="w-full p-2 bg-white border border-slate-200 rounded-lg font-mono text-xs focus:ring-2 focus:ring-indigo-500 outline-hidden"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Salary Payment Mode</label>
+                    <select
+                      value={formData.salaryMode || 'Bank Transfer'}
+                      onChange={(e) => setFormData({ ...formData, salaryMode: e.target.value })}
+                      className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 outline-hidden"
+                    >
+                      <option value="Bank Transfer">Direct Bank Transfer (NEFT / RTGS)</option>
+                      <option value="Cheque">Company Cheque</option>
+                      <option value="Cash">Cash Disbursal</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Statutory Tax Numbers */}
+              <div className="p-3.5 sm:p-4 bg-slate-50 rounded-xl border border-slate-200/90 space-y-3">
+                <span className="font-bold text-slate-800 block text-[11px] uppercase tracking-wider">Identity & Statutory Tax Numbers</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block font-semibold text-slate-700 mb-1">PAN Number</label>
                     <input
@@ -563,7 +669,7 @@ export const EmployeeDirectory: React.FC<EmployeeDirectoryProps> = ({
                       value={formData.panNumber}
                       onChange={(e) => setFormData({ ...formData, panNumber: e.target.value.toUpperCase() })}
                       placeholder="ABCDE1234F"
-                      className="w-full p-2.5 sm:p-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-hidden font-mono text-slate-900 text-sm sm:text-xs"
+                      className="w-full p-2 bg-white border border-slate-200 rounded-lg font-mono text-xs focus:ring-2 focus:ring-indigo-500 outline-hidden"
                     />
                   </div>
 
@@ -574,7 +680,7 @@ export const EmployeeDirectory: React.FC<EmployeeDirectoryProps> = ({
                       value={formData.aadhaarNumber}
                       onChange={(e) => setFormData({ ...formData, aadhaarNumber: e.target.value })}
                       placeholder="1234-5678-9012"
-                      className="w-full p-2.5 sm:p-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-hidden font-mono text-slate-900 text-sm sm:text-xs"
+                      className="w-full p-2 bg-white border border-slate-200 rounded-lg font-mono text-xs focus:ring-2 focus:ring-indigo-500 outline-hidden"
                     />
                   </div>
                 </div>

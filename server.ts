@@ -2,11 +2,58 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
+import jwt from "jsonwebtoken";
+import rateLimit from "express-rate-limit";
 import { db } from "./src/services/db.js";
 import { initializeSchema } from './src/services/schema.js';
 import { seedSqliteData } from './src/services/seedSqlite.js';
 import { sqliteDb } from './src/services/database.js';
 import { Role, normalizeRole } from './src/services/rbac.js';
+import * as dotenv from 'dotenv';
+dotenv.config();
+
+// ─── JWT Configuration ─────────────────────────────────────────────────────────
+// JWT_SECRET must be set in .env — never hardcoded. 512-bit recommended.
+const JWT_SECRET = process.env.JWT_SECRET || (() => {
+  console.warn('[SECURITY WARNING] JWT_SECRET is not set in .env! Using a temporary insecure secret. Set JWT_SECRET immediately.');
+  return 'INSECURE_FALLBACK_MUST_SET_JWT_SECRET_IN_ENV_' + Date.now();
+})();
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '8h';
+const JWT_IMPERSONATION_EXPIRES_IN = process.env.JWT_IMPERSONATION_EXPIRES_IN || '4h';
+
+/** Sign a real HS256 JWT. */
+function signToken(payload: object, expiresIn: string = JWT_EXPIRES_IN): string {
+  return jwt.sign(payload, JWT_SECRET, { algorithm: 'HS256', expiresIn } as any);
+}
+
+/** Verify and decode a real JWT. Returns null if invalid or expired. */
+function verifyToken(token: string): Record<string, any> | null {
+  try {
+    return jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as Record<string, any>;
+  } catch {
+    return null;
+  }
+}
+
+// ─── Rate Limiters ─────────────────────────────────────────────────────────────
+/** Strict limit on login attempts to block brute-force attacks. */
+const loginRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10,                   // 10 attempts per window per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many login attempts. Please try again in 15 minutes.' },
+  skipSuccessfulRequests: true, // Only count failed attempts
+});
+
+/** General API throttling to prevent scraping and DoS. */
+const apiRateLimiter = rateLimit({
+  windowMs: 60 * 1000,  // 1 minute
+  max: 300,             // 300 requests per minute per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Rate limit exceeded. Please slow down.' },
+});
 const STATUTORY_REGISTERS = [
   { key: "pay_slip", label: "Pay Slips — Form IV B [Rule 26(2)]", period: "month", orientation: "Portrait" },
   { key: "pay_register", label: "Pay Register — Equal Remuneration & Contract Labour", period: "month", orientation: "Landscape" },
@@ -18,9 +65,27 @@ const STATUTORY_REGISTERS = [
   { key: "leave_register", label: "Earn Leave Register", period: "year", orientation: "Portrait" }
 ];
 
+/** Normalize a raw tenant string to a canonical ID (lowercase, alphanumeric only). */
+function normalizeTenant(t: string): string {
+  // Canonical form: lowercase alphanumeric with underscores preserved
+  return (t || '').toLowerCase().replace(/[^a-z0-9_]/g, '_').replace(/__+/g, '_').replace(/^_|_$/g, '') || 'unknown';
+}
+
+/**
+ * Resolve the requesting tenant from (in order of precedence):
+ *   1. Authenticated JWT claim (most authoritative — cannot be spoofed)
+ *   2. x-tenant-id header
+ *   3. ?tenant= query parameter
+ *   4. URL path segment (for SPA routes like /:tenant/dashboard)
+ *
+ * NOTE: For authenticated routes, the security middleware enforces that the
+ * resolved tenant matches the JWT claim — so client-supplied values cannot
+ * elevate access. This function is used ONLY for resolving context on
+ * unauthenticated or early-in-pipeline calls.
+ */
 function getTenantId(req: express.Request): string {
-  const queryTenant = req.query.tenant as string;
   const headerTenant = req.headers["x-tenant-id"] as string;
+  const queryTenant = req.query.tenant as string;
   let pathTenant: string | null = null;
   if (req.originalUrl) {
     const parts = req.originalUrl.split("?")[0].replace(/^\/+|\/+$/g, "").split("/");
@@ -28,42 +93,73 @@ function getTenantId(req: express.Request): string {
       pathTenant = parts[0];
     }
   }
-  const raw = (queryTenant || headerTenant || pathTenant || "apex").toLowerCase();
-  const clean = raw.replace(/[^a-z0-9]/g, "");
-  if (clean.includes("abcmfg")) return "abc_mfg";
-  if (clean.includes("smit")) return "smit";
-  if (clean.includes("apex")) return "apex";
-  return clean || "apex";
+
+  const explicitTarget = queryTenant || headerTenant || pathTenant;
+
+  // Prefer the JWT claim on authenticated requests unless SuperAdmin explicitly requested a tenant
+  const auth = req.headers['authorization'];
+  if (auth) {
+    const token = auth.replace('Bearer ', '');
+    const decoded = verifyToken(token);
+    if (decoded?.tenantId) {
+      const userTenant = normalizeTenant(decoded.tenantId);
+      const isSuper = decoded.role === 'superadmin' || decoded.role === 'super_admin' || userTenant === 'platform_master';
+      
+      if (explicitTarget) {
+        const cleanTarget = normalizeTenant(explicitTarget);
+        if (isSuper || cleanTarget === userTenant) {
+          return cleanTarget;
+        }
+      }
+      return userTenant;
+    }
+  }
+
+  return explicitTarget ? normalizeTenant(explicitTarget) : 'apex';
 }
 
-function normalizeTenant(t: string): string {
-  const clean = (t || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  if (clean.includes("abcmfg")) return "abc_mfg";
-  if (clean.includes("smit")) return "smit";
-  if (clean.includes("apex")) return "apex";
-  return clean || "apex";
-}
-
+/**
+ * Verify the request's Bearer token (real JWT) and return the authenticated user.
+ *
+ * Security guarantee: this uses jwt.verify() with the server-side secret — any
+ * tampered or forged token will fail the signature check and return null.
+ * The old implementation split on '_' and trusted the embedded user ID without
+ * any signature verification, making it trivially bypassable.
+ */
 function getAuthUser(req: express.Request): { tenantId: string; userId: string; role: string; name: string } | null {
   const auth = req.headers['authorization'];
-  if (!auth) return null;
-  const parts = auth.replace('Bearer ', '').split('_');
-  if (parts.length < 5) return null;
-  const userId = parts[3];
-  
-  // Look up in SQLite first
+  if (!auth || !auth.startsWith('Bearer ')) return null;
+
+  const token = auth.slice(7); // remove 'Bearer '
+  const decoded = verifyToken(token);
+  if (!decoded || !decoded.userId) return null;
+
+  const userId: string = decoded.userId;
+  const tenantIdFromToken: string = decoded.tenantId || '';
+
+  // Cross-validate against persistent store to detect revoked/stale sessions.
+  // SQLite is the primary store; JSON db is the legacy fallback for seeded data.
   const sqliteUser = sqliteDb.prepare('SELECT * FROM users WHERE id = ?').get(userId) as any;
   if (sqliteUser) {
-    return { tenantId: normalizeTenant(sqliteUser.tenant_id), userId: sqliteUser.id, role: sqliteUser.role, name: sqliteUser.name };
+    return {
+      tenantId: normalizeTenant(sqliteUser.tenant_id),
+      userId: sqliteUser.id,
+      role: sqliteUser.role,
+      name: sqliteUser.name,
+    };
   }
 
-  // Fallback lookup in db.ts users array
   const jsonUser = (db as any).data?.users?.find((u: any) => u.id === userId);
-  if (jsonUser) {
-    return { tenantId: normalizeTenant(jsonUser.tenantId), userId: jsonUser.id, role: jsonUser.role, name: jsonUser.name };
+  if (jsonUser && normalizeTenant(jsonUser.tenantId) === normalizeTenant(tenantIdFromToken)) {
+    return {
+      tenantId: normalizeTenant(jsonUser.tenantId),
+      userId: jsonUser.id,
+      role: jsonUser.role,
+      name: jsonUser.name,
+    };
   }
 
-  return null;
+  return null; // Token was valid JWT but user not found in any store → reject
 }
 
 // Security Middleware: Strict Tenant Isolation & Session Guard
@@ -101,10 +197,21 @@ function enforceTenantSecurity(req: express.Request, res: express.Response, next
   if (authUser && authUser.role !== 'superadmin' && authUser.role !== 'super_admin') {
     const userTenant = normalizeTenant(authUser.tenantId);
     
-    if (userTenant !== requestedTenant) {
+    // Check explicit tenant target from header or query string
+    const headerTenant = req.headers["x-tenant-id"] ? normalizeTenant(req.headers["x-tenant-id"] as string) : null;
+    const queryTenant = req.query.tenant ? normalizeTenant(req.query.tenant as string) : null;
+    
+    if (headerTenant && headerTenant !== userTenant) {
       return res.status(403).json({
         success: false,
-        error: `Forbidden: Security Violation! User from tenant '${userTenant}' cannot access tenant '${requestedTenant}'.`
+        error: `Forbidden: Security Violation! User from tenant '${userTenant}' cannot access target header tenant '${headerTenant}'.`
+      });
+    }
+    
+    if (queryTenant && queryTenant !== userTenant) {
+      return res.status(403).json({
+        success: false,
+        error: `Forbidden: Security Violation! User from tenant '${userTenant}' cannot access target query tenant '${queryTenant}'.`
       });
     }
   }
@@ -187,7 +294,7 @@ async function startServer() {
   });
 
   // ==================== AUTHENTICATION & RBAC API ====================
-  app.post("/api/auth/login", (req, res) => {
+  app.post("/api/auth/login", loginRateLimiter, (req, res) => {
     const { email, password, tenantCode } = req.body;
     if (!email || !password) {
       return res.status(400).json({ success: false, message: "Email and password are required" });
@@ -215,9 +322,21 @@ async function startServer() {
 
     db.addAuditLog(tenantId, authRes.user.id, authRes.user.name, "USER_LOGIN", "Auth", `User ${email} logged in successfully`);
 
+    // Issue a real HS256-signed JWT. The payload is readable but the signature
+    // cannot be forged without JWT_SECRET. Expiry is 8h by default.
+    const tokenPayload = {
+      userId: authRes.user.id,
+      tenantId,
+      role: authRes.user.role,
+      name: authRes.user.name,
+      email: authRes.user.email,
+      iat: Math.floor(Date.now() / 1000),
+    };
+    const token = signToken(tokenPayload, JWT_EXPIRES_IN);
+
     res.json({
       success: true,
-      token: `jwt_token_secure_${authRes.user.id}_${Date.now()}`,
+      token,
       user: {
         id: authRes.user.id,
         email: authRes.user.email,
@@ -241,10 +360,11 @@ async function startServer() {
     const tenantId = getTenantId(req);
     const tenant = db.getTenant(tenantId);
     const employees = db.getEmployees(tenantId, { unmask: true });
+    const formattedFallback = tenantId.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') + ' Pvt. Ltd.';
     res.json({
       success: true,
       tenantKey: tenantId,
-      companyName: tenant ? tenant.name : `${tenantId.toUpperCase()} Enterprises Pvt. Ltd.`,
+      companyName: tenant ? tenant.name : formattedFallback,
       employeesCount: employees.length
     });
   });
@@ -290,19 +410,27 @@ async function startServer() {
       }
     };
 
-    const profile = companyProfiles[tenantId] || {
-      name: tenant ? tenant.name : `${tenantId.toUpperCase()} Pvt. Ltd.`,
-      code: tenantId.toUpperCase(),
-      cin: `U72200MH2022PTC${Math.floor(100000 + Math.random() * 900000)}`,
-      pan: `AABC${tenantId.substring(0, 2).toUpperCase()}1234F`,
-      tan: `MUM${tenantId.substring(0, 2).toUpperCase()}12345B`,
-      epfoEstCode: `MH/MUM/00${Math.floor(10000 + Math.random() * 90000)}/000`,
-      esicEstCode: `31000${Math.floor(1000000000 + Math.random() * 9000000000)}`,
-      headquarters: "Corporate Office Tower, Mumbai, Maharashtra",
+    const customSettings = db.getSettings(tenantId) || {};
+
+    const profile = {
+      name: customSettings.companyName || tenant?.name || companyProfiles[tenantId]?.name || `${tenantId.toUpperCase()} Pvt. Ltd.`,
+      code: customSettings.code || companyProfiles[tenantId]?.code || tenantId.toUpperCase(),
+      cin: customSettings.cin || companyProfiles[tenantId]?.cin || `U72200MH2022PTC${Math.floor(100000 + Math.random() * 900000)}`,
+      pan: customSettings.pan || companyProfiles[tenantId]?.pan || `AABC${tenantId.substring(0, 2).toUpperCase()}1234F`,
+      tan: customSettings.tan || companyProfiles[tenantId]?.tan || `MUM${tenantId.substring(0, 2).toUpperCase()}12345B`,
+      epfoEstCode: customSettings.epfoEstCode || companyProfiles[tenantId]?.epfoEstCode || `MH/MUM/00${Math.floor(10000 + Math.random() * 90000)}/000`,
+      esicEstCode: customSettings.esicEstCode || companyProfiles[tenantId]?.esicEstCode || `31000${Math.floor(1000000000 + Math.random() * 9000000000)}`,
+      headquarters: customSettings.headquarters || companyProfiles[tenantId]?.headquarters || "Corporate Office Tower, Mumbai, Maharashtra",
       branches: masters.branches
     };
 
     res.json({ success: true, company: profile });
+  });
+
+  app.post("/api/company/update", (req, res) => {
+    const tenantId = getTenantId(req);
+    const updated = db.updateCompanyProfile(tenantId, req.body);
+    res.json({ success: true, company: updated });
   });
 
   // ==================== EMPLOYEES API (WITH PII MASKING & PAGINATION) ====================
@@ -614,16 +742,40 @@ async function startServer() {
     }
 
     const cleanTenant = normalizeTenant(targetTenant);
-    const companyEmail = `admin@${cleanTenant.replace(/_/g, '')}.com`;
     
-    // Authenticate or generate user for this tenant
-    let authRes = db.authenticateUser(companyEmail, "admin");
-    if (!authRes.user) {
-      authRes = db.authenticateUser(`admin@${cleanTenant}.in`, "admin");
-    }
+    // Find an existing admin user for this tenant, or create an impersonation payload
+    const sqliteUser = sqliteDb.prepare('SELECT * FROM users WHERE tenant_id = ? LIMIT 1').get(cleanTenant) as any;
+    const jsonUsers = (db as any).data?.users || [];
+    const jsonUser = jsonUsers.find((u: any) => normalizeTenant(u.tenantId) === cleanTenant);
 
-    const user = authRes.user!;
-    const token = `jwt_token_secure_${user.id}_${Date.now()}`;
+    const user = sqliteUser ? {
+      id: sqliteUser.id,
+      email: sqliteUser.email,
+      name: sqliteUser.name,
+      role: sqliteUser.role,
+      tenantId: cleanTenant
+    } : jsonUser ? {
+      id: jsonUser.id,
+      email: jsonUser.email,
+      name: jsonUser.name,
+      role: jsonUser.role,
+      tenantId: cleanTenant
+    } : {
+      id: `imp-${cleanTenant}`,
+      email: `admin@${cleanTenant}.com`,
+      name: `${cleanTenant.toUpperCase()} Admin (Impersonated)`,
+      role: 'company_admin',
+      tenantId: cleanTenant
+    };
+    const token = signToken({
+      userId: user.id,
+      tenantId: cleanTenant,
+      role: user.role,
+      name: user.name,
+      email: user.email,
+      impersonatedBy: "superadmin",
+      iat: Math.floor(Date.now() / 1000)
+    }, JWT_IMPERSONATION_EXPIRES_IN);
     const tenantObj = db.getTenant(cleanTenant) || { name: cleanTenant.toUpperCase() };
 
     db.addAuditLog(cleanTenant, "superadmin", "Super Admin", "IMPERSONATE_TENANT", "Tenant", `Superadmin impersonated tenant ${cleanTenant}`);
@@ -797,11 +949,21 @@ async function startServer() {
   });
 
   app.post("/api/masters/branches", (req, res) => {
-    res.json({ success: true, branch: req.body });
+    const tenantId = getTenantId(req);
+    const branch = db.addBranch(tenantId, req.body);
+    res.json({ success: true, branch });
   });
 
   app.post("/api/masters/departments", (req, res) => {
-    res.json({ success: true, department: req.body });
+    const tenantId = getTenantId(req);
+    const department = db.addDepartment(tenantId, req.body.name);
+    res.json({ success: true, department });
+  });
+
+  app.post("/api/masters/designations", (req, res) => {
+    const tenantId = getTenantId(req);
+    const designation = db.addDesignation(tenantId, req.body.name);
+    res.json({ success: true, designation });
   });
 
   // ==================== SETTINGS API ====================

@@ -70,18 +70,18 @@ export const ImportEmployeesModal: React.FC<ImportEmployeesModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Download Sample CSV Template
+  // Download Sample CSV Template with ALL 24 Fields
   const handleDownloadTemplate = () => {
-    const csvContent = `Full Name,Email,Phone,Designation,Department,Branch,Date of Joining,Employment Type,Basic Salary,Gross Salary,PAN Number,Aadhaar Number,Status
-Rajesh Sharma,rajesh.sharma@apexenterprises.in,+91 98765 43210,Lead Engineer,Engineering,Mumbai Headquarters,2025-04-15,Full-Time,45000,95000,ABCDE1234F,1234-5678-9012,Active
-Priya Verma,priya.verma@apexenterprises.in,+91 98123 45678,HR Specialist,Human Resources,Bengaluru Tech Hub,2025-06-01,Full-Time,30000,65000,FGHIJ5678K,9876-5432-1098,Active
-Amit Patel,amit.patel@apexenterprises.in,+91 99887 76655,Financial Analyst,Finance & Accounts,Mumbai Headquarters,2026-01-10,Probation,28000,60000,KLMNO9012P,4567-8901-2345,Probation`;
+    const csvContent = `Full Name,Email,Phone,Designation,Department,Branch,Date of Joining,Employment Type,Basic Salary,HRA,Special Allowance,Gross Salary,PAN Number,Aadhaar Number,UAN Number,PF Number,ESI Number,Bank Name,Bank Account Number,IFSC Code,Salary Mode,Status
+Rajesh Sharma,rajesh.sharma@apexenterprises.in,+91 98765 43210,Lead Engineer,Engineering,Mumbai Headquarters,2025-04-15,Full-Time,45000,22500,27500,95000,ABCDE1234F,1234-5678-9012,100912345678,MH/BAN/0049281/000/101,3100123456001,HDFC Bank,50100123456789,HDFC0000123,Bank Transfer,Active
+Priya Verma,priya.verma@apexenterprises.in,+91 98123 45678,HR Specialist,Human Resources,Bengaluru Tech Hub,2025-06-01,Full-Time,30000,15000,20000,65000,FGHIJ5678K,9876-5432-1098,100987654321,KN/BLR/0012345/000/102,3100987654002,ICICI Bank,000401567890,ICIC0000004,Bank Transfer,Active
+Amit Patel,amit.patel@apexenterprises.in,+91 99887 76655,Financial Analyst,Finance & Accounts,Mumbai Headquarters,2026-01-10,Probation,28000,14000,18000,60000,KLMNO9012P,4567-8901-2345,100945678901,MH/MUM/0099887/000/103,3100456789003,State Bank of India,3004819201,SBIN0001234,Bank Transfer,Probation`;
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', 'Employee_Import_Template.csv');
+    link.setAttribute('download', 'PayrollPro_Employee_Master_Import_Template.csv');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -128,10 +128,20 @@ Amit Patel,amit.patel@apexenterprises.in,+91 99887 76655,Financial Analyst,Finan
           const branch = getFieldValue(row, ['Branch', 'branch', 'Work Location', 'Location']) || 'Mumbai Headquarters';
           const doj = getFieldValue(row, ['Date of Joining', 'doj', 'DOJ', 'Joining Date']) || new Date().toISOString().split('T')[0];
           const employmentTypeStr = getFieldValue(row, ['Employment Type', 'employmentType', 'Type']) || 'Full-Time';
+          
           const basicSalaryStr = getFieldValue(row, ['Basic Salary', 'basicSalary', 'Basic']);
           const grossSalaryStr = getFieldValue(row, ['Gross Salary', 'grossSalary', 'Gross']);
           const panNumber = getFieldValue(row, ['PAN Number', 'panNumber', 'PAN']) || 'ABCDE1234F';
           const aadhaarNumber = getFieldValue(row, ['Aadhaar Number', 'aadhaarNumber', 'Aadhaar']) || '1234-5678-9012';
+          const uanNumber = getFieldValue(row, ['UAN Number', 'uanNumber', 'UAN']) || '100912345678';
+          const pfNumber = getFieldValue(row, ['PF Number', 'pfNumber', 'PF Member ID']) || 'MH/BAN/0049281/000/101';
+          const esicNumber = getFieldValue(row, ['ESI Number', 'esicNumber', 'ESIC Number', 'IP Number']) || '3100123456001';
+          
+          const bankName = getFieldValue(row, ['Bank Name', 'bankName', 'Bank']) || 'HDFC Bank';
+          const bankAccount = getFieldValue(row, ['Bank Account Number', 'bankAccount', 'Account Number', 'Account']) || '50100123456789';
+          const bankIfsc = getFieldValue(row, ['IFSC Code', 'bankIfsc', 'IFSC']) || 'HDFC0000123';
+          const salaryMode = getFieldValue(row, ['Salary Mode', 'salaryMode', 'Payment Mode']) || 'Bank Transfer';
+
           const statusStr = getFieldValue(row, ['Status', 'status']) || 'Active';
           const managerName = getFieldValue(row, ['Manager Name', 'managerName', 'Manager']) || 'Vikramaditya Rao';
 
@@ -160,10 +170,6 @@ Amit Patel,amit.patel@apexenterprises.in,+91 99887 76655,Financial Analyst,Finan
           const basicSalary = parseFloat(basicSalaryStr.replace(/[^0-9.]/g, '')) || 35000;
           const grossSalary = parseFloat(grossSalaryStr.replace(/[^0-9.]/g, '')) || 75000;
 
-          if (grossSalary < basicSalary) {
-            errors.push('Gross salary should be greater than or equal to Basic salary');
-          }
-
           let empType: EmploymentType = 'Full-Time';
           if (['Part-Time', 'Contract', 'Intern', 'Probation'].includes(employmentTypeStr)) {
             empType = employmentTypeStr as EmploymentType;
@@ -187,9 +193,18 @@ Amit Patel,amit.patel@apexenterprises.in,+91 99887 76655,Financial Analyst,Finan
             managerName,
             basicSalary,
             grossSalary,
-            ctc: grossSalary * 12 * 1.2,
+            ctc: grossSalary * 12,
             panNumber,
-            aadhaarNumber
+            aadhaarNumber,
+            uanNumber,
+            pfNumber,
+            esicNumber,
+            bankName,
+            bankAccount,
+            bankIfsc,
+            isPfApplicable: true,
+            isEsiApplicable: true,
+            isPtApplicable: true
           };
 
           records.push({

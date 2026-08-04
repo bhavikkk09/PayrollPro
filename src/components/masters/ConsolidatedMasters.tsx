@@ -21,7 +21,8 @@ import {
   Sparkles,
   Trash2,
   X,
-  Upload
+  Upload,
+  Save
 } from 'lucide-react';
 import { SalaryComponent } from '../../types';
 import { api } from '../../services/api';
@@ -217,6 +218,36 @@ export const ConsolidatedMasters: React.FC = () => {
   });
 
   const [activeCompanyDetails, setActiveCompanyDetails] = useState<any>(null);
+  const [companyForm, setCompanyForm] = useState({
+    name: '',
+    code: '',
+    cin: '',
+    pan: '',
+    tan: '',
+    epfoEstCode: '',
+    esicEstCode: '',
+    headquarters: ''
+  });
+
+  const [shiftsList, setShiftsList] = useState([
+    { id: 'SHF-01', name: 'General Day Shift', startTime: '09:30 AM', endTime: '06:30 PM', halfDayHours: 4.0, graceMins: 15, earlyOutMins: 15, otThresholdHours: 8.0, weeklyOff: 'Sunday', branchScope: 'All Branches' },
+    { id: 'SHF-02', name: 'Morning Shift (Production)', startTime: '07:00 AM', endTime: '03:30 PM', halfDayHours: 4.0, graceMins: 10, earlyOutMins: 10, otThresholdHours: 8.0, weeklyOff: 'Wednesday', branchScope: 'Pune Logistics Depot' },
+    { id: 'SHF-03', name: 'Night Shift', startTime: '09:00 PM', endTime: '05:30 AM', halfDayHours: 4.0, graceMins: 15, earlyOutMins: 15, otThresholdHours: 8.0, weeklyOff: 'Wednesday & Sunday', branchScope: 'All Branches' }
+  ]);
+  const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
+  const [editingShift, setEditingShift] = useState<any>(null);
+  const [shiftForm, setShiftForm] = useState({
+    name: '',
+    startTime: '09:00 AM',
+    endTime: '06:00 PM',
+    halfDayHours: 4.0,
+    graceMins: 15,
+    earlyOutMins: 15,
+    otThresholdHours: 8.0,
+    weeklyOff: 'Sunday',
+    branchScope: 'All Branches'
+  });
+
   const activeTenantKey = (window.location.pathname.replace(/^\/+|\/+$/g, '').split('/')[0] || 'apex').toLowerCase().replace(/[^a-z0-9]/g, '');
   const logoKey = `payrollpro_company_logo_${activeTenantKey}`;
 
@@ -225,6 +256,16 @@ export const ConsolidatedMasters: React.FC = () => {
       const company = await api.getCompany();
       if (company) {
         setActiveCompanyDetails(company);
+        setCompanyForm({
+          name: company.name || '',
+          code: company.code || '',
+          cin: company.cin || '',
+          pan: company.pan || '',
+          tan: company.tan || '',
+          epfoEstCode: company.epfoEstCode || '',
+          esicEstCode: company.esicEstCode || '',
+          headquarters: company.headquarters || ''
+        });
       } else {
         const info = await api.getTenantInfo();
         if (info && info.companyName) {
@@ -232,6 +273,7 @@ export const ConsolidatedMasters: React.FC = () => {
             ...prev,
             name: info.companyName
           }));
+          setCompanyForm((prev) => ({ ...prev, name: info.companyName }));
         }
       }
       const data = await api.getSalaryComponents();
@@ -241,6 +283,36 @@ export const ConsolidatedMasters: React.FC = () => {
     }
     loadMasterInfo();
   }, [window.location.pathname]);
+
+  const handleSaveCompanyProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const res = await api.updateCompanyProfile(companyForm);
+    if (res && res.success) {
+      setActiveCompanyDetails((prev: any) => ({ ...prev, ...companyForm }));
+      showToast('Company Profile updated and saved persistently to database!');
+    } else {
+      setActiveCompanyDetails((prev: any) => ({ ...prev, ...companyForm }));
+      showToast('Company Profile saved!');
+    }
+  };
+
+  const handleSaveShiftPolicy = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!shiftForm.name.trim()) return;
+
+    if (editingShift) {
+      setShiftsList(prev => prev.map(s => s.id === editingShift.id ? { ...s, ...shiftForm } : s));
+      showToast(`Shift Policy "${shiftForm.name}" updated!`);
+    } else {
+      const newShift = {
+        id: `SHF-${Math.floor(10 + Math.random() * 90)}`,
+        ...shiftForm
+      };
+      setShiftsList(prev => [...prev, newShift]);
+      showToast(`New Shift Policy "${shiftForm.name}" created!`);
+    }
+    setIsShiftModalOpen(false);
+  };
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -331,10 +403,18 @@ export const ConsolidatedMasters: React.FC = () => {
       });
     } else if (masterForm.type === 'Department') {
       await api.createDepartment(masterForm.title);
+    } else if (masterForm.type === 'Shift Type' || (masterForm.type as any) === 'Designation') {
+      await api.createDesignation(masterForm.title);
     }
 
     setIsAddModalOpen(false);
     showToast(`New ${masterForm.type} record "${masterForm.title}" added to masters via REST API!`);
+    
+    // Reload master info to immediately reflect new item
+    const refreshed = await api.getMasters();
+    if (refreshed && refreshed.salaryComponents) {
+      setSalaryComponents(refreshed.salaryComponents);
+    }
   };
 
   // Policy Engine Handlers
@@ -841,32 +921,108 @@ export const ConsolidatedMasters: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
-            <div>
-              <span className="text-slate-400">Company Name</span>
-              <div className="font-bold text-slate-900 mt-0.5">{activeCompanyDetails.name}</div>
+          {/* Company Profile Interactive Edit Form */}
+          <form onSubmit={handleSaveCompanyProfile} className="space-y-4 pt-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">Company Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={companyForm.name}
+                  onChange={(e) => setCompanyForm({ ...companyForm, name: e.target.value })}
+                  placeholder="e.g. Kaveri Logistics Pvt. Ltd."
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-hidden"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">Company Code / Short Identifier</label>
+                <input
+                  type="text"
+                  value={companyForm.code}
+                  onChange={(e) => setCompanyForm({ ...companyForm, code: e.target.value.toUpperCase() })}
+                  placeholder="e.g. KAVERI"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-hidden"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">Corporate CIN Number</label>
+                <input
+                  type="text"
+                  value={companyForm.cin}
+                  onChange={(e) => setCompanyForm({ ...companyForm, cin: e.target.value.toUpperCase() })}
+                  placeholder="U28990MH2015PTC268901"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-hidden"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">PAN Number</label>
+                <input
+                  type="text"
+                  value={companyForm.pan}
+                  onChange={(e) => setCompanyForm({ ...companyForm, pan: e.target.value.toUpperCase() })}
+                  placeholder="AABCK1234F"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-hidden"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">TAN Number</label>
+                <input
+                  type="text"
+                  value={companyForm.tan}
+                  onChange={(e) => setCompanyForm({ ...companyForm, tan: e.target.value.toUpperCase() })}
+                  placeholder="MUMK12345B"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-hidden"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">EPFO Establishment Code</label>
+                <input
+                  type="text"
+                  value={companyForm.epfoEstCode}
+                  onChange={(e) => setCompanyForm({ ...companyForm, epfoEstCode: e.target.value })}
+                  placeholder="MH/BAN/0049281/000"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono font-bold text-indigo-700 focus:ring-2 focus:ring-indigo-500 outline-hidden"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">ESIC Establishment Code</label>
+                <input
+                  type="text"
+                  value={companyForm.esicEstCode}
+                  onChange={(e) => setCompanyForm({ ...companyForm, esicEstCode: e.target.value })}
+                  placeholder="31000492810001001"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono font-bold text-indigo-700 focus:ring-2 focus:ring-indigo-500 outline-hidden"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-slate-700 font-semibold mb-1">Headquarters Registered Address</label>
+                <input
+                  type="text"
+                  value={companyForm.headquarters}
+                  onChange={(e) => setCompanyForm({ ...companyForm, headquarters: e.target.value })}
+                  placeholder="BKC Office Tower, Bandra Kurla Complex, Mumbai, Maharashtra 400051"
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-hidden"
+                />
+              </div>
             </div>
-            <div>
-              <span className="text-slate-400">Company CIN</span>
-              <div className="font-mono font-bold text-slate-900 mt-0.5">{activeCompanyDetails.cin || 'U28990MH2015PTC268901'}</div>
+
+            <div className="pt-3 flex justify-end">
+              <button
+                type="submit"
+                className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md cursor-pointer transition-all flex items-center gap-2"
+              >
+                <Save className="w-4 h-4" /> Save Company Profile
+              </button>
             </div>
-            <div>
-              <span className="text-slate-400">Company PAN</span>
-              <div className="font-mono font-bold text-slate-900 mt-0.5">{activeCompanyDetails.pan || 'AABCA9876F'}</div>
-            </div>
-            <div>
-              <span className="text-slate-400">EPFO Establishment Code</span>
-              <div className="font-mono font-bold text-indigo-700 mt-0.5">{activeCompanyDetails.epfoEstCode || 'MH/PUN/0098765/000'}</div>
-            </div>
-            <div>
-              <span className="text-slate-400">ESIC Establishment Code</span>
-              <div className="font-mono font-bold text-indigo-700 mt-0.5">{activeCompanyDetails.esicEstCode || '31000987650001001'}</div>
-            </div>
-            <div>
-              <span className="text-slate-400">TAN Number</span>
-              <div className="font-mono font-bold text-slate-900 mt-0.5">{activeCompanyDetails.tan || 'MUMA98765C'}</div>
-            </div>
-          </div>
+          </form>
         </div>
       )}
 
@@ -888,28 +1044,68 @@ export const ConsolidatedMasters: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 4: SHIFT TYPES */}
+      {/* TAB 4: SHIFT TYPES POLICY MANAGEMENT */}
       {activeTab === 'shifts' && (
         <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-4 text-xs">
-          <h3 className="text-sm font-bold text-slate-900 border-b border-slate-200 pb-2">
-            Configured Shift Timings & Grace Periods
-          </h3>
+          <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-indigo-600" />
+                Configured Shift Timings & Branch-Wise Shift Policies
+              </h3>
+              <p className="text-slate-500">
+                Define shift schedules, grace periods, OT threshold hours, and branch assignment scopes.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setEditingShift(null);
+                setShiftForm({
+                  name: '',
+                  startTime: '09:00 AM',
+                  endTime: '06:00 PM',
+                  halfDayHours: 4.0,
+                  graceMins: 15,
+                  earlyOutMins: 15,
+                  otThresholdHours: 8.0,
+                  weeklyOff: 'Sunday',
+                  branchScope: 'All Branches'
+                });
+                setIsShiftModalOpen(true);
+              }}
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-xs cursor-pointer"
+            >
+              <Plus className="w-4 h-4" /> Add Shift Policy
+            </button>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-              <div className="font-bold text-slate-900">General Day Shift</div>
-              <div className="text-slate-600">09:30 AM to 06:30 PM (9.0 Hrs)</div>
-              <div className="text-[11px] text-emerald-700 font-semibold">15 Mins Grace Period (09:45 AM)</div>
-            </div>
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-              <div className="font-bold text-slate-900">Morning Shift (Production)</div>
-              <div className="text-slate-600">07:00 AM to 03:30 PM (8.5 Hrs)</div>
-              <div className="text-[11px] text-emerald-700 font-semibold">10 Mins Grace Period</div>
-            </div>
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-              <div className="font-bold text-slate-900">Night Shift</div>
-              <div className="text-slate-600">09:00 PM to 05:30 AM (8.5 Hrs)</div>
-              <div className="text-[11px] text-indigo-700 font-semibold">+₹250 Night Shift Allowance</div>
-            </div>
+            {shiftsList.map((s) => (
+              <div key={s.id} className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2 hover:border-indigo-300 transition-all">
+                <div className="flex items-center justify-between">
+                  <div className="font-bold text-slate-900">{s.name}</div>
+                  <button
+                    onClick={() => {
+                      setEditingShift(s);
+                      setShiftForm({ ...s });
+                      setIsShiftModalOpen(true);
+                    }}
+                    className="text-xs text-indigo-600 font-semibold hover:underline cursor-pointer"
+                  >
+                    Edit
+                  </button>
+                </div>
+                <div className="text-slate-700 font-mono font-semibold">{s.startTime} to {s.endTime}</div>
+                <div className="text-[11px] text-slate-500 flex items-center justify-between">
+                  <span>Grace: <strong>{s.graceMins} mins</strong></span>
+                  <span>Half-day: <strong>{s.halfDayHours} hrs</strong></span>
+                </div>
+                <div className="text-[11px] text-slate-500 flex items-center justify-between">
+                  <span>Weekoff: <strong className="text-indigo-700">{s.weeklyOff}</strong></span>
+                  <span>Branch: <strong className="text-slate-800">{s.branchScope}</strong></span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -1244,7 +1440,9 @@ export const ConsolidatedMasters: React.FC = () => {
                         className="w-full p-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-hidden font-bold text-indigo-900 text-xs"
                       >
                         <option value="Sunday">Sunday (Standard 6-Day Workweek)</option>
+                        <option value="Wednesday">Wednesday (Mid-week Off)</option>
                         <option value="Saturday & Sunday">Saturday & Sunday (5-Day Corporate Week)</option>
+                        <option value="Wednesday & Sunday">Wednesday & Sunday (Dual Shift Pattern)</option>
                         <option value="2nd & 4th Saturday + Sunday">2nd & 4th Saturday + Sunday (Banking Pattern)</option>
                         <option value="Friday">Friday (Middle East / Gulf Shift)</option>
                         <option value="Thursday & Friday">Thursday & Friday (Gulf 5-Day Week)</option>
@@ -1428,6 +1626,131 @@ export const ConsolidatedMasters: React.FC = () => {
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   {editingPolicy ? 'Update Policy Module' : 'Save & Deploy Policy'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* SHIFT POLICY MODAL */}
+      {isShiftModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden my-auto">
+            <div className="p-4 bg-slate-900 text-white flex items-center justify-between">
+              <h3 className="font-bold text-sm flex items-center gap-2">
+                <Clock className="w-4 h-4 text-indigo-400" />
+                {editingShift ? 'Edit Shift Policy' : 'Create New Shift Policy'}
+              </h3>
+              <button type="button" onClick={() => setIsShiftModalOpen(false)} className="p-1 text-slate-400 hover:text-white rounded-lg">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveShiftPolicy} className="p-5 space-y-4 text-xs">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Shift Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={shiftForm.name}
+                  onChange={(e) => setShiftForm({ ...shiftForm, name: e.target.value })}
+                  placeholder="e.g. General Day Shift, Night Shift"
+                  className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 text-xs focus:ring-2 focus:ring-indigo-500 outline-hidden"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Start Time</label>
+                  <input
+                    type="text"
+                    value={shiftForm.startTime}
+                    onChange={(e) => setShiftForm({ ...shiftForm, startTime: e.target.value })}
+                    placeholder="09:00 AM"
+                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs focus:ring-2 focus:ring-indigo-500 outline-hidden"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">End Time</label>
+                  <input
+                    type="text"
+                    value={shiftForm.endTime}
+                    onChange={(e) => setShiftForm({ ...shiftForm, endTime: e.target.value })}
+                    placeholder="06:00 PM"
+                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs focus:ring-2 focus:ring-indigo-500 outline-hidden"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Late Grace (Mins)</label>
+                  <input
+                    type="number"
+                    value={shiftForm.graceMins}
+                    onChange={(e) => setShiftForm({ ...shiftForm, graceMins: Number(e.target.value) })}
+                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 outline-hidden"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Half-Day Threshold (Hrs)</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={shiftForm.halfDayHours}
+                    onChange={(e) => setShiftForm({ ...shiftForm, halfDayHours: Number(e.target.value) })}
+                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 outline-hidden"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Weekly Off Option</label>
+                  <select
+                    value={shiftForm.weeklyOff}
+                    onChange={(e) => setShiftForm({ ...shiftForm, weeklyOff: e.target.value })}
+                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-indigo-900 text-xs focus:ring-2 focus:ring-indigo-500 outline-hidden"
+                  >
+                    <option value="Sunday">Sunday</option>
+                    <option value="Wednesday">Wednesday</option>
+                    <option value="Saturday & Sunday">Saturday & Sunday</option>
+                    <option value="Wednesday & Sunday">Wednesday & Sunday</option>
+                    <option value="2nd & 4th Saturday + Sunday">2nd & 4th Saturday + Sunday</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Applicable Branch Scope</label>
+                  <select
+                    value={shiftForm.branchScope}
+                    onChange={(e) => setShiftForm({ ...shiftForm, branchScope: e.target.value })}
+                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-900 text-xs focus:ring-2 focus:ring-indigo-500 outline-hidden"
+                  >
+                    <option value="All Branches">All Branches (Company-wide)</option>
+                    <option value="Mumbai Central HQ">Mumbai Central HQ</option>
+                    <option value="Pune Logistics Depot">Pune Logistics Depot</option>
+                    <option value="Bengaluru Warehouse">Bengaluru Warehouse</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="pt-3 flex justify-end gap-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsShiftModalOpen(false)}
+                  className="px-4 py-2 border border-slate-200 text-slate-600 rounded-xl font-semibold hover:bg-slate-100 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-xs cursor-pointer"
+                >
+                  {editingShift ? 'Update Shift' : 'Save Shift Policy'}
                 </button>
               </div>
             </form>

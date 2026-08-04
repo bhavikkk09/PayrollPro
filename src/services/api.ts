@@ -4,8 +4,9 @@ import { Employee, LeaveRequest, ComplianceDueItem, PayrollBatch, SalaryComponen
 // Helper to get active tenant ID from URL path, query string, or active session
 function getTenantHeader(): Record<string, string> {
   const queryTenant = new URLSearchParams(window.location.search).get('tenant');
-  const pathname = window.location.pathname.replace(/^\/+|\/+$/g, '');
-  const pathTenant = (pathname && pathname !== 'admin' && pathname !== 'superadmin' && !pathname.startsWith('api')) ? pathname : null;
+  const segments = window.location.pathname.replace(/^\/+|\/+$/g, '').split('/');
+  const firstSegment = segments[0] || '';
+  const pathTenant = (firstSegment && firstSegment !== 'admin' && firstSegment !== 'superadmin' && !firstSegment.startsWith('api')) ? firstSegment : null;
   
   let savedTenant: string | null = null;
   let token: string | null = null;
@@ -112,6 +113,19 @@ export const api = {
       return data.company;
     } catch {
       return null;
+    }
+  },
+
+  async updateCompanyProfile(profile: any) {
+    try {
+      const res = await fetch('/api/company/update', {
+        method: 'POST',
+        headers: getTenantHeader(),
+        body: JSON.stringify(profile)
+      });
+      return await res.json();
+    } catch {
+      return { success: false };
     }
   },
 
@@ -419,6 +433,19 @@ export const api = {
     }
   },
 
+  async createDesignation(name: string) {
+    try {
+      const res = await fetch('/api/masters/designations', {
+        method: 'POST',
+        headers: getTenantHeader(),
+        body: JSON.stringify({ name })
+      });
+      return await res.json();
+    } catch {
+      return { success: false };
+    }
+  },
+
   // Integrations
   async getIntegrations() {
     try {
@@ -475,7 +502,7 @@ export const api = {
     }
   },
 
-  async createTenant(tenant: { name: string; domain: string; plan: string; region: string; maxEmployees: number; demoData?: boolean }) {
+  async createTenant(tenant: { name: string; domain: string; plan: string; region: string; maxEmployees: number; demoData?: boolean; adminEmail?: string; adminPassword?: string }) {
     try {
       const res = await fetch('/api/superadmin/tenants', {
         method: 'POST',

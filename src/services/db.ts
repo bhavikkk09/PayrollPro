@@ -184,6 +184,9 @@ export interface SchemaDB {
   settings: Record<string, any>;
   salaryComponents?: Record<string, any[]>; // key: tenantId
   employeeComponents?: Record<string, any[]>; // key: tenantId_empId
+  customBranches?: Record<string, any[]>; // key: tenantId
+  customDepartments?: Record<string, any[]>; // key: tenantId
+  customDesignations?: Record<string, any[]>; // key: tenantId
 }
 
 class PersistentDatabase {
@@ -519,11 +522,26 @@ class PersistentDatabase {
 
   public getTenant(tenantId: string) {
     const clean = this.normalizeTenantId(tenantId);
-    return this.data.tenants.find(t => this.normalizeTenantId(t.id) === clean || this.normalizeTenantId(t.code) === clean || this.normalizeTenantId(t.subdomain) === clean) || { name: 'ABC Manufacturing Pvt. Ltd.' };
+    const found = this.data.tenants.find(t => this.normalizeTenantId(t.id) === clean || this.normalizeTenantId(t.code) === clean || this.normalizeTenantId(t.subdomain) === clean);
+    if (found) return found;
+    
+    // Dynamic fallback matching requested tenant ID
+    const formattedName = clean.split('_').map(w => w.toUpperCase()).join(' ');
+    return {
+      id: clean,
+      name: `${formattedName} Pvt. Ltd.`,
+      code: clean,
+      subdomain: clean,
+      status: 'Active',
+      adminEmail: `admin@${clean}.com`
+    };
   }
 
-  public createTenant(tenantData: { name: string; domain: string; plan: string; region?: string; maxEmployees?: number; demoData?: boolean }) {
+  public createTenant(tenantData: { name: string; domain: string; plan: string; adminEmail?: string; adminPassword?: string; region?: string; maxEmployees?: number; demoData?: boolean }) {
     const code = tenantData.domain.toLowerCase().replace(/[^a-z0-9-]/g, '');
+    const adminEmail = tenantData.adminEmail || `admin@${code}.com`;
+    const adminPassword = tenantData.adminPassword || 'password123';
+
     const newTenant = {
       id: code,
       name: tenantData.name,
@@ -537,10 +555,72 @@ class PersistentDatabase {
       monthlyCostINR: 5000,
       version: 'v15.2.0-enterprise',
       lastBackup: new Date().toISOString().replace('T', ' ').slice(0, 19),
-      createdAt: new Date().toISOString().split('T')[0]
+      createdAt: new Date().toISOString().split('T')[0],
+      adminEmail,
+      adminPassword
     };
 
+    // 1. Save tenant entry
     this.data.tenants.push(newTenant);
+
+    // 2. Create initial Admin User for this tenant
+    const adminUser: UserAccount = {
+      id: `usr-${code}-admin`,
+      tenantId: code,
+      email: adminEmail.toLowerCase(),
+      passwordHash: hashPassword(adminPassword),
+      name: `${tenantData.name} Admin`,
+      role: 'company_admin',
+      createdAt: new Date().toISOString().split('T')[0]
+    };
+    if (!this.data.users) this.data.users = [];
+    this.data.users.push(adminUser);
+
+    // 3. Initialize Company Settings for this tenant
+    if (!this.data.settings) this.data.settings = {};
+    this.data.settings[code] = {
+      companyName: tenantData.name,
+      code: code.toUpperCase(),
+      cin: `U72200MH2026PTC${Math.floor(100000 + Math.random() * 900000)}`,
+      pan: `AABC${code.substring(0, 2).toUpperCase()}1234F`,
+      tan: `MUM${code.substring(0, 2).toUpperCase()}12345B`,
+      epfoEstCode: `MH/MUM/00${Math.floor(10000 + Math.random() * 90000)}/000`,
+      esicEstCode: `31000${Math.floor(1000000000 + Math.random() * 9000000000)}`,
+      headquarters: 'Headquarters & Operational Hub',
+      workDaysPerMonth: 26,
+      pfWageCap: 15000,
+      defaultOtMultiplier: 1.5
+    };
+
+    // 4. Initialize Default Branches, Departments & Designations for this tenant
+    if (!this.data.customBranches) this.data.customBranches = {};
+    if (!this.data.customBranches[code]) {
+      this.data.customBranches[code] = [
+        { id: `BR-${code}-01`, name: 'Headquarters Main Office', city: 'Mumbai', state: 'Maharashtra', employeeCount: 0, status: 'Active' },
+        { id: `BR-${code}-02`, name: 'Regional Operations Hub', city: 'Bengaluru', state: 'Karnataka', employeeCount: 0, status: 'Active' }
+      ];
+    }
+
+    if (!this.data.customDepartments) this.data.customDepartments = {};
+    if (!this.data.customDepartments[code]) {
+      this.data.customDepartments[code] = [
+        { id: `DP-${code}-01`, name: 'Engineering & Technology', headOfDepartment: 'VP Technology', employeeCount: 0 },
+        { id: `DP-${code}-02`, name: 'Human Resources & Legal', headOfDepartment: 'HR Director', employeeCount: 0 },
+        { id: `DP-${code}-03`, name: 'Finance & Accounts', headOfDepartment: 'Finance Controller', employeeCount: 0 },
+        { id: `DP-${code}-04`, name: 'Logistics & Operations', headOfDepartment: 'Operations Lead', employeeCount: 0 }
+      ];
+    }
+
+    if (!this.data.customDesignations) this.data.customDesignations = {};
+    if (!this.data.customDesignations[code]) {
+      this.data.customDesignations[code] = [
+        { id: `DS-${code}-01`, name: 'Chief Executive Officer' },
+        { id: `DS-${code}-02`, name: 'HR Operations Lead' },
+        { id: `DS-${code}-03`, name: 'Software Engineer' },
+        { id: `DS-${code}-04`, name: 'Senior Accountant' },
+        { id: `DS-${code}-05`, name: 'Operations Supervisor' }
+      ];
+    }
 
     // If demoData is checked, seed demo employees for this tenant
     if (tenantData.demoData) {
@@ -554,9 +634,29 @@ class PersistentDatabase {
       });
     }
 
-    this.addAuditLog(code, 'system', 'Super Admin', 'CREATE_TENANT', 'Tenant', `Created tenant workspace ${tenantData.name} (${code})`);
+    this.addAuditLog(code, 'system', 'Super Admin', 'CREATE_TENANT', 'Tenant', `Created tenant workspace ${tenantData.name} (${code}) with admin ${adminEmail}`);
     this.saveDB();
     return newTenant;
+  }
+
+  public updateCompanyProfile(tenantId: string, profile: any) {
+    const clean = this.normalizeTenantId(tenantId);
+    if (!this.data.settings) this.data.settings = {};
+    if (!this.data.settings[clean]) this.data.settings[clean] = {};
+    
+    this.data.settings[clean] = {
+      ...this.data.settings[clean],
+      ...profile,
+      companyName: profile.name || profile.companyName || this.data.settings[clean].companyName || 'Corporate Entity'
+    };
+
+    const targetTenant = this.data.tenants.find(t => this.normalizeTenantId(t.id) === clean || this.normalizeTenantId(t.code) === clean);
+    if (targetTenant) {
+      if (profile.name) targetTenant.name = profile.name;
+    }
+
+    this.saveDB();
+    return this.data.settings[clean];
   }
 
   // --- Employee Operations with PII Masking & Pagination ---
@@ -1295,8 +1395,8 @@ class PersistentDatabase {
   }
 
   public getMasters(tenantId: string) {
-    // Derive real branches, departments and designations from live employee data
-    const employees = this.getEmployees(tenantId, { unmask: true });
+    const clean = this.normalizeTenantId(tenantId);
+    const employees = this.getEmployees(clean, { unmask: true });
 
     const branchSet = new Map<string, number>();
     const deptSet = new Map<string, string>();   // dept -> HOD name
@@ -1311,6 +1411,24 @@ class PersistentDatabase {
       if (e.designation) desigSet.add(e.designation);
     });
 
+    // Merge custom added branches
+    const customBr = (this.data.customBranches && this.data.customBranches[clean]) || [];
+    customBr.forEach(b => {
+      if (b.name && !branchSet.has(b.name)) branchSet.set(b.name, 0);
+    });
+
+    // Merge custom added departments
+    const customDp = (this.data.customDepartments && this.data.customDepartments[clean]) || [];
+    customDp.forEach(d => {
+      if (d.name && !deptSet.has(d.name)) deptSet.set(d.name, d.headOfDepartment || '—');
+    });
+
+    // Merge custom added designations
+    const customDs = (this.data.customDesignations && this.data.customDesignations[clean]) || [];
+    customDs.forEach(ds => {
+      if (ds.name && !desigSet.has(ds.name)) desigSet.add(ds.name);
+    });
+
     const branches = Array.from(branchSet.entries()).map(([name, count], i) => ({
       id: `br${i + 1}`, name, employeeCount: count, status: 'Active'
     }));
@@ -1323,7 +1441,37 @@ class PersistentDatabase {
       id: `ds${i + 1}`, name, employeeCount: employees.filter(e => e.designation === name).length
     }));
 
-    return { branches, departments, designations, salaryComponents: this.getSalaryComponents(tenantId) };
+    return { branches, departments, designations, salaryComponents: this.getSalaryComponents(clean) };
+  }
+
+  public addBranch(tenantId: string, branch: any) {
+    const clean = this.normalizeTenantId(tenantId);
+    if (!this.data.customBranches) this.data.customBranches = {};
+    if (!this.data.customBranches[clean]) this.data.customBranches[clean] = [];
+    const newBr = { id: `br-${Date.now()}`, name: branch.name, city: branch.city || 'Mumbai', state: branch.state || 'Maharashtra', status: 'Active' };
+    this.data.customBranches[clean].push(newBr);
+    this.saveDB();
+    return newBr;
+  }
+
+  public addDepartment(tenantId: string, name: string) {
+    const clean = this.normalizeTenantId(tenantId);
+    if (!this.data.customDepartments) this.data.customDepartments = {};
+    if (!this.data.customDepartments[clean]) this.data.customDepartments[clean] = [];
+    const newDp = { id: `dp-${Date.now()}`, name, headOfDepartment: '—', status: 'Active' };
+    this.data.customDepartments[clean].push(newDp);
+    this.saveDB();
+    return newDp;
+  }
+
+  public addDesignation(tenantId: string, name: string) {
+    const clean = this.normalizeTenantId(tenantId);
+    if (!this.data.customDesignations) this.data.customDesignations = {};
+    if (!this.data.customDesignations[clean]) this.data.customDesignations[clean] = [];
+    const newDs = { id: `ds-${Date.now()}`, name, status: 'Active' };
+    this.data.customDesignations[clean].push(newDs);
+    this.saveDB();
+    return newDs;
   }
 
   public getIntegrations(tenantId: string) {

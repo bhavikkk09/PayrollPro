@@ -93,12 +93,20 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, initialTen
         sessionStorage.setItem('payrollpro_active_tenant', activeTenant);
         localStorage.setItem('payrollpro_active_tenant', activeTenant);
 
+        const knownNames: Record<string, string> = {
+          apex: 'Apex Enterprises India Pvt. Ltd.',
+          smit: 'Smit Infotech',
+          abc_mfg: 'ABC Manufacturing Pvt. Ltd.',
+          kaveri: 'Kaveri Logistics Pvt. Ltd.'
+        };
+        const tenantTitle = knownNames[activeTenant] || (activeTenant.charAt(0).toUpperCase() + activeTenant.slice(1) + ' Pvt. Ltd.');
+
         onLoginSuccess({
           email: `hr@${activeTenant}.in`,
           name: `${activeTenant.toUpperCase()} HR Admin`,
           role: 'company_admin',
           tenantId: activeTenant,
-          tenantName: `${activeTenant.toUpperCase()} Enterprises Pvt. Ltd.`,
+          tenantName: tenantTitle,
           token: `token_demo_${Date.now()}`
         });
       }

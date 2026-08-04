@@ -47,15 +47,13 @@ export const PayrollWizard: React.FC = () => {
   const steps = [
     { number: 1, title: 'Lock Attendance', desc: 'Verify 31-day attendance grid & LOP' },
     { number: 2, title: 'OT & Variable Pay', desc: 'Calculate overtime multipliers & bonus' },
-    { number: 3, title: 'Loan Recovery', desc: 'Deduct active salary advances' },
-    { number: 4, title: 'Statutory Deductions', desc: 'PF 12%, ESIC, PT & Income Tax TDS' },
-    { number: 5, title: 'Variance Review', desc: 'Audit >15% salary changes' },
-    { number: 6, title: 'Multi-Tier Approvals', desc: 'HR, Finance & Director signoff' },
-    { number: 7, title: 'Disbursal & Outputs', desc: 'Bank payout file, Payslips & ECR' },
+    { number: 3, title: 'Statutory Deductions', desc: 'PF 12%, ESIC, PT & Income Tax TDS' },
+    { number: 4, title: 'Variance Review', desc: 'Audit >15% salary changes' },
+    { number: 5, title: 'Disbursal & Outputs', desc: 'Bank payout file, Payslips & ECR' },
   ];
 
   const handleNext = async () => {
-    if (currentStep < 7) {
+    if (currentStep < 5) {
       const next = currentStep + 1;
       setCurrentStep(next);
       await api.processPayrollStep(next);
@@ -87,7 +85,7 @@ export const PayrollWizard: React.FC = () => {
             Indian Statutory Payroll Processing Wizard
           </h2>
           <p className="text-xs text-slate-300 mt-1">
-            Automated 7-step salary computation for {employees.length} active employees under Indian Labor Laws.
+            Direct 5-step salary computation for {employees.length} active employees under Indian Labor Laws.
           </p>
         </div>
 
@@ -118,56 +116,59 @@ export const PayrollWizard: React.FC = () => {
                 }`}
               >
                 <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all ${
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
                     isCompleted
-                      ? 'bg-emerald-600 text-white shadow-xs'
+                      ? 'bg-emerald-500 text-white'
                       : isCurrent
-                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/30 ring-4 ring-indigo-100'
-                      : 'bg-slate-100 text-slate-500 border border-slate-200'
+                      ? 'bg-indigo-600 text-white shadow-md'
+                      : 'bg-slate-100 text-slate-400'
                   }`}
                 >
                   {isCompleted ? <Check className="w-4 h-4" /> : step.number}
                 </div>
-                <span
-                  className={`text-xs font-bold mt-1.5 truncate max-w-[100px] ${
-                    isCurrent ? 'text-indigo-700' : isCompleted ? 'text-slate-800' : 'text-slate-400'
-                  }`}
-                >
+                <span className={`text-xs font-semibold mt-1.5 ${isCurrent ? 'text-indigo-900' : 'text-slate-600'}`}>
                   {step.title}
                 </span>
-                <span className="text-[10px] text-slate-400 truncate max-w-[90px]">{step.desc}</span>
+                <span className="text-[10px] text-slate-400 mt-0.5 line-clamp-1">{step.desc}</span>
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* Step Content Container */}
+      {/* Main Step Workspace */}
       <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-6">
-        {/* Step 1: Lock Attendance */}
+        {/* Step 1: Attendance */}
         {currentStep === 1 && (
           <div className="space-y-4">
             <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <Lock className="w-4 h-4 text-indigo-600" />
-                Step 1: Attendance & Loss of Pay (LOP) Lock
-              </h3>
-              <span className="text-xs bg-emerald-100 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full">
-                Attendance Lock Status: ACTIVE
-              </span>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Step 1: Attendance & LOP Verification</h3>
+                <p className="text-xs text-slate-500">Lock attendance records for {monthCycle} to freeze LOP days</p>
+              </div>
+              <button
+                onClick={() => setIsAttendanceLocked(!isAttendanceLocked)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 ${
+                  isAttendanceLocked ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                }`}
+              >
+                <Lock className="w-3.5 h-3.5" />
+                {isAttendanceLocked ? 'Attendance Locked ✓' : 'Click to Lock Attendance'}
+              </button>
             </div>
 
-            <p className="text-xs text-slate-600">
-              Review monthly check-in logs. 0 unapproved missing punches detected. Total Loss of Pay (LOP) days: {employees.length === 0 ? 0 : 3} across company.
-            </p>
-
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-2">
-              <div className="font-bold text-slate-800">Attendance Verification Checklist</div>
-              <div className="flex items-center gap-2 text-emerald-700 font-semibold">
-                <CheckCircle2 className="w-4 h-4" /> 31 Days Monthly Grid imported from Biometric Devices
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-slate-500">Total Work Days in Month</span>
+                <div className="text-lg font-bold text-slate-900 font-mono">26 Days</div>
               </div>
-              <div className="flex items-center gap-2 text-emerald-700 font-semibold">
-                <CheckCircle2 className="w-4 h-4" /> All Leave Applications Approved by Line Managers
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-slate-500">Total Present Days (All Staff)</span>
+                <div className="text-lg font-bold text-emerald-600 font-mono">{employees.length * 25} Days</div>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-slate-500">Total LOP (Unpaid Days)</span>
+                <div className="text-lg font-bold text-amber-600 font-mono">2 LOP Days</div>
               </div>
             </div>
           </div>
@@ -177,72 +178,47 @@ export const PayrollWizard: React.FC = () => {
         {currentStep === 2 && (
           <div className="space-y-4">
             <h3 className="text-sm font-bold text-slate-900 border-b border-slate-200 pb-3">
-              Step 2: Overtime Hours & Performance Bonus / Incentives
+              Step 2: Overtime & Variable Allowance Calculation
             </h3>
-            <p className="text-xs text-slate-600">
-              Overtime rate multiplier set to 1.5x hourly basic pay as per Factories Act / Shops & Establishment Act.
-            </p>
-            {employees.length === 0 ? (
-              <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1">
-                <div className="font-bold text-slate-800">Calculated OT Payout for {monthCycle}: ₹0</div>
-                <div className="text-slate-500">No overtime hours logged for this cycle.</div>
-              </div>
-            ) : (
-              <div className="p-4 bg-indigo-50/60 rounded-xl border border-indigo-100 text-xs space-y-1">
-                <div className="font-bold text-indigo-900">Calculated OT Payout for {monthCycle}: ₹12,450</div>
-                <div className="text-slate-600">{employees.slice(0, 3).map(e => e.fullName).join(' (4 hrs) • ')}</div>
-              </div>
-            )}
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-2">
+              <div className="font-semibold text-slate-800">Automated 1.5x Overtime Multiplier Applied</div>
+              <p className="text-slate-600">Calculated 14 total OT hours across engineering & manufacturing teams. Added ₹4,200 total OT pay.</p>
+            </div>
           </div>
         )}
 
-        {/* Step 3: Loan Recovery */}
+        {/* Step 3: Statutory Deductions */}
         {currentStep === 3 && (
           <div className="space-y-4">
             <h3 className="text-sm font-bold text-slate-900 border-b border-slate-200 pb-3">
-              Step 3: Employee Loan & Salary Advance Recovery
+              Step 3: Indian Statutory Taxes & Deductions Audit
             </h3>
-            <p className="text-xs text-slate-600">
-              Automated deduction of active salary advances from Net Salary.
-            </p>
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600">
-              No active loan deductions pending for {monthCycle} cycle.
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-xs">
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-slate-500">Provident Fund (EPF 12%)</span>
+                <div className="text-base font-bold font-mono text-slate-900 mt-1">₹{totalPF.toLocaleString()}</div>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-slate-500">Professional Tax (PT)</span>
+                <div className="text-base font-bold font-mono text-slate-900 mt-1">₹{totalPT.toLocaleString()}</div>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-slate-500">Income Tax TDS (Sec 192)</span>
+                <div className="text-base font-bold font-mono text-slate-900 mt-1">₹{totalTDS.toLocaleString()}</div>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-slate-500">Total Statutory Retentions</span>
+                <div className="text-base font-bold font-mono text-indigo-600 mt-1">₹{(totalPF + totalPT + totalTDS).toLocaleString()}</div>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Step 4: Statutory Deductions */}
+        {/* Step 4: Variance Review */}
         {currentStep === 4 && (
           <div className="space-y-4">
             <h3 className="text-sm font-bold text-slate-900 border-b border-slate-200 pb-3">
-              Step 4: Statutory Compliance Deductions (PF, ESIC, PT, TDS)
-            </h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
-                <div className="font-semibold text-slate-500">Employee EPF (12%)</div>
-                <div className="text-lg font-bold font-mono text-slate-900 mt-1">₹{totalPF.toLocaleString('en-IN')}</div>
-              </div>
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
-                <div className="font-semibold text-slate-500">Professional Tax (PT)</div>
-                <div className="text-lg font-bold font-mono text-slate-900 mt-1">₹{totalPT.toLocaleString('en-IN')}</div>
-              </div>
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
-                <div className="font-semibold text-slate-500">Income Tax TDS</div>
-                <div className="text-lg font-bold font-mono text-slate-900 mt-1">₹{totalTDS.toLocaleString('en-IN')}</div>
-              </div>
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
-                <div className="font-semibold text-slate-500">Employer EPF/EPS Share</div>
-                <div className="text-lg font-bold font-mono text-slate-900 mt-1">₹{totalPF.toLocaleString('en-IN')}</div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Step 5: Variance Review */}
-        {currentStep === 5 && (
-          <div className="space-y-4">
-            <h3 className="text-sm font-bold text-slate-900 border-b border-slate-200 pb-3">
-              Step 5: Salary Variance & Anomaly Audit
+              Step 4: Salary Variance & Anomaly Audit
             </h3>
             {employees.length === 0 ? (
               <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600 flex items-center gap-2">
@@ -255,71 +231,15 @@ export const PayrollWizard: React.FC = () => {
                   <AlertTriangle className="w-4 h-4 text-amber-600" /> 1 Salary Variance Alert Flagged
                 </div>
                 <p className="text-amber-800">
-                  {employees[0]?.fullName || 'Employee'}'s net salary is 10% lower due to 2 Unpaid LWP days during probation. Verified correct.
+                  {employees[0]?.fullName || 'Employee'}'s net salary is 10% lower due to 2 Unpaid LWP days. Verified correct.
                 </p>
               </div>
             )}
           </div>
         )}
 
-        {/* Step 6: Multi-tier Approvals */}
-        {currentStep === 6 && (
-          <div className="space-y-4">
-            <h3 className="text-sm font-bold text-slate-900 border-b border-slate-200 pb-3">
-              Step 6: Multi-Tier Approval Matrix
-            </h3>
-
-            <div className="space-y-3 text-xs">
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
-                <div>
-                  <div className="font-bold text-slate-800">1. HR Operations Approval</div>
-                  <div className="text-slate-500">HR Operations Admin</div>
-                </div>
-                <button
-                  onClick={() => setHrApproved(!hrApproved)}
-                  className={`px-3 py-1.5 rounded-xl font-bold ${
-                    hrApproved ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700'
-                  }`}
-                >
-                  {hrApproved ? 'Approved ✓' : 'Click to Signoff'}
-                </button>
-              </div>
-
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
-                <div>
-                  <div className="font-bold text-slate-800">2. Finance Controller Approval</div>
-                  <div className="text-slate-500">Finance Controller</div>
-                </div>
-                <button
-                  onClick={() => setFinanceApproved(!financeApproved)}
-                  className={`px-3 py-1.5 rounded-xl font-bold ${
-                    financeApproved ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700'
-                  }`}
-                >
-                  {financeApproved ? 'Approved ✓' : 'Click to Signoff'}
-                </button>
-              </div>
-
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
-                <div>
-                  <div className="font-bold text-slate-800">3. Managing Director Final Signoff</div>
-                  <div className="text-slate-500">Managing Director</div>
-                </div>
-                <button
-                  onClick={() => setDirectorApproved(!directorApproved)}
-                  className={`px-3 py-1.5 rounded-xl font-bold ${
-                    directorApproved ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700'
-                  }`}
-                >
-                  {directorApproved ? 'Approved ✓' : 'Click to Signoff'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Step 7: Disbursal & Output Generation */}
-        {currentStep === 7 && (
+        {/* Step 5: Disbursal & Output Generation */}
+        {currentStep === 5 && (
           <div className="space-y-6">
             <div className="p-6 bg-emerald-50 rounded-2xl border border-emerald-200 text-center space-y-3">
               <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto" />
@@ -327,7 +247,7 @@ export const PayrollWizard: React.FC = () => {
                 {monthCycle} Payroll Calculation Complete!
               </h3>
               <p className="text-xs text-emerald-800 max-w-lg mx-auto">
-                All 3 approvals granted. Net Disbursal Amount: <span className="font-mono font-bold">₹{totalNet.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
+                Net Disbursal Amount: <span className="font-mono font-bold">₹{totalNet.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
               </p>
 
               <div className="flex items-center justify-center gap-3 pt-3 flex-wrap">
@@ -363,11 +283,11 @@ export const PayrollWizard: React.FC = () => {
             <ArrowLeft className="w-4 h-4" /> Previous Step
           </button>
 
-          <span className="text-slate-400 font-mono">Step {currentStep} of 7</span>
+          <span className="text-slate-400 font-mono">Step {currentStep} of 5</span>
 
           <button
             onClick={handleNext}
-            disabled={currentStep === 7}
+            disabled={currentStep === 5}
             className="flex items-center gap-1.5 px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-xs cursor-pointer"
           >
             Next Step <ArrowRight className="w-4 h-4" />
