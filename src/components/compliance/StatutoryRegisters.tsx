@@ -45,10 +45,16 @@ export const StatutoryRegisters: React.FC = () => {
 
   useEffect(() => {
     async function loadTenantCompany() {
-      const info = await api.getTenantInfo();
-      if (info && info.companyName) {
-        setSelectedCompany(info.companyName);
-        setCompanies([info.companyName]);
+      const company = await api.getCompany();
+      if (company && company.name) {
+        setSelectedCompany(company.name);
+        setCompanies([company.name]);
+      } else {
+        const info = await api.getTenantInfo();
+        if (info && info.companyName) {
+          setSelectedCompany(info.companyName);
+          setCompanies([info.companyName]);
+        }
       }
     }
     loadTenantCompany();

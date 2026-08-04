@@ -15,7 +15,6 @@ import {
   Clock,
   Sparkles
 } from 'lucide-react';
-import { sampleEmployees, sampleLeaveRequests, sampleComplianceItems, sampleActionItems } from '../../data/mockData';
 import { NavigationSection, Employee, LeaveRequest } from '../../types';
 
 interface ActionDashboardProps {
@@ -248,47 +247,34 @@ export const ActionDashboard: React.FC<ActionDashboardProps> = ({
               Urgent HR Action Items
             </h3>
             <span className="text-xs text-slate-500">
-              {totalEmployees === 0 ? 0 : sampleActionItems.length} items require response
+              {pendingLeaveRequests.length} item(s) require response
             </span>
           </div>
 
           <div className="space-y-3">
-            {totalEmployees === 0 ? (
+            {pendingLeaveRequests.length === 0 ? (
               <div className="p-6 text-center bg-white rounded-2xl border border-slate-200/80 text-slate-500 text-xs font-medium">
                 <Sparkles className="w-6 h-6 text-emerald-500 mx-auto mb-2" />
-                <span>Zero pending action items. This workspace has clean state with 0 records.</span>
+                <span>Zero pending action items. All employee requests & compliance tasks are up to date!</span>
               </div>
             ) : (
-              sampleActionItems.map((action) => (
+              pendingLeaveRequests.map((req) => (
                 <div
-                  key={action.id}
+                  key={req.id}
                   className="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between gap-4 hover:border-indigo-300 transition-all"
                 >
                   <div className="flex items-start gap-3">
-                    <div
-                      className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
-                        action.urgency === 'High' ? 'bg-rose-500' : 'bg-amber-500'
-                      }`}
-                    ></div>
+                    <div className="w-2 h-2 rounded-full mt-1.5 shrink-0 bg-rose-500" />
                     <div>
-                      <h4 className="text-xs font-bold text-slate-900">{action.title}</h4>
-                      <p className="text-xs text-slate-500 mt-0.5">{action.subtitle}</p>
-                      <span className="inline-block mt-1 text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-xs">
-                        {action.category}
-                      </span>
+                      <h4 className="text-xs font-bold text-slate-900">{req.employeeName} — {req.leaveType}</h4>
+                      <p className="text-[11px] text-slate-500 mt-0.5">{req.reason || 'Pending manager approval'} ({req.totalDays} day(s))</p>
                     </div>
                   </div>
-
                   <button
-                    onClick={() => {
-                      if (action.actionType === 'GOTO_LEAVE') onSelectSection('leave');
-                      else if (action.actionType === 'GOTO_ATTENDANCE') onSelectSection('attendance');
-                      else if (action.actionType === 'GOTO_EMPLOYEES') onSelectSection('employees');
-                      else if (action.actionType === 'GOTO_COMPLIANCE') onSelectSection('compliance');
-                    }}
-                    className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white rounded-xl text-xs font-semibold border border-indigo-200/80 transition-all shrink-0"
+                    onClick={() => onSelectSection('leave')}
+                    className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-xl text-xs shadow-2xs transition-all cursor-pointer shrink-0"
                   >
-                    {action.actionLabel}
+                    Review Request
                   </button>
                 </div>
               ))

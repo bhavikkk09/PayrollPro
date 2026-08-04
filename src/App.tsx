@@ -21,7 +21,7 @@ import { AiAssistantDrawer } from './components/ai/AiAssistantDrawer';
 import { FrappeRationaleModal } from './components/modals/FrappeRationaleModal';
 import { InteractiveDemoEngine } from './components/demo/InteractiveDemoEngine';
 import { LoginPage, AuthUser } from './components/auth/LoginPage';
-import { sampleEmployees } from './data/mockData';
+import { SuperAdminLoginPage } from './components/auth/SuperAdminLoginPage';
 import { Employee, LeaveRequest, NavigationSection } from './types';
 import { api } from './services/api';
 
@@ -241,6 +241,9 @@ export default function App() {
 
   // Render Login Page if user is not authenticated
   if (!authUser) {
+    if (initialRoute.isAdmin) {
+      return <SuperAdminLoginPage onLoginSuccess={handleLoginSuccess} />;
+    }
     return <LoginPage onLoginSuccess={handleLoginSuccess} initialTenantCode={initialRoute.tenant} />;
   }
 

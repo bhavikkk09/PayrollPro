@@ -1,18 +1,34 @@
 import React, { useState } from 'react';
 import { Settings, Shield, Bell, User, Key, Save, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { AuditLogViewer } from './AuditLogViewer';
+import { api } from '../../services/api';
 
 export const SettingsView: React.FC = () => {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'settings' | 'audit'>('settings');
+
+  const [apiKey, setApiKey] = useState('b47a92c109283f1d');
+  const [apiSecret, setApiSecret] = useState('••••••••••••••••');
+
+  React.useEffect(() => {
+    async function load() {
+      const data = await api.getSettings();
+      if (data) {
+        if (data.frappeApiKey) setApiKey(data.frappeApiKey);
+        if (data.frappeApiSecret) setApiSecret(data.frappeApiSecret);
+      }
+    }
+    load();
+  }, []);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  const handleSaveSettings = (e: React.FormEvent) => {
+  const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
+    await api.updateSettings({ frappeApiKey: apiKey, frappeApiSecret: apiSecret });
     showToast('Frappe HRMS backend configuration settings saved successfully!');
   };
 
@@ -68,7 +84,8 @@ export const SettingsView: React.FC = () => {
                   <label className="block text-slate-700 font-semibold mb-1">Frappe API Key</label>
                   <input
                     type="password"
-                    defaultValue="b47a92c109283f1d"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono outline-hidden focus:border-indigo-500"
                   />
                 </div>
@@ -76,7 +93,8 @@ export const SettingsView: React.FC = () => {
                   <label className="block text-slate-700 font-semibold mb-1">Frappe API Secret</label>
                   <input
                     type="password"
-                    defaultValue="••••••••••••••••"
+                    value={apiSecret}
+                    onChange={(e) => setApiSecret(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono outline-hidden focus:border-indigo-500"
                   />
                 </div>

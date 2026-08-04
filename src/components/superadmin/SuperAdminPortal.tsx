@@ -268,29 +268,38 @@ export const SuperAdminPortal: React.FC = () => {
     showToast(`Automated DB + File Backup initiated for ${tenantName}`);
   };
 
-  const handleImpersonate = (subdomain: string, tenantName?: string) => {
+  const handleImpersonate = async (subdomain: string, tenantName?: string) => {
     let cleanCode = subdomain.includes('tenant=') ? subdomain.split('tenant=')[1] : subdomain;
     cleanCode = cleanCode.replace(/^https?:\/\//, '').replace(/\/+$/, '').split('/')[0];
-    cleanCode = cleanCode.toLowerCase().replace(/[^a-z0-9-]/g, '') || 'smit';
-    
+    cleanCode = cleanCode.toLowerCase().replace(/[^a-z0-9_]/g, '') || 'abc_mfg';
+    if (cleanCode.includes('abcmfg')) cleanCode = 'abc_mfg';
+
     const companyTitle = tenantName || (cleanCode.charAt(0).toUpperCase() + cleanCode.slice(1) + ' Pvt. Ltd.');
 
-    const authPayload = JSON.stringify({
-      email: `hr@${cleanCode}.in`,
+    // Fetch valid signed session token from backend API
+    const res = await api.impersonateTenant(cleanCode);
+    const validToken = res?.token || `jwt_token_secure_usr-${cleanCode}_${Date.now()}`;
+    const userPayload = res?.user || {
+      id: `usr-${cleanCode}`,
+      email: `admin@${cleanCode.replace(/_/g, '')}.com`,
       name: `${companyTitle} (HR Manager)`,
-      role: 'company_admin',
+      role: 'hr_admin',
       tenantId: cleanCode,
-      tenantName: companyTitle,
-      token: `token_impersonate_${Date.now()}`
+      tenantName: companyTitle
+    };
+
+    const authPayload = JSON.stringify({
+      ...userPayload,
+      token: validToken
     });
 
+    sessionStorage.setItem('payrollpro_token', validToken);
     sessionStorage.setItem('payrollpro_active_tenant', cleanCode);
     sessionStorage.setItem('payrollpro_auth_user', authPayload);
-    sessionStorage.setItem('payrollpro_last_active_time', Date.now().toString());
 
+    localStorage.setItem('payrollpro_token', validToken);
     localStorage.setItem('payrollpro_active_tenant', cleanCode);
     localStorage.setItem('payrollpro_auth_user', authPayload);
-    localStorage.setItem('payrollpro_last_active_time', Date.now().toString());
 
     const targetUrl = `http://localhost:3000/${cleanCode}/dashboard`;
     showToast(`Opening Tenant Workspace: ${companyTitle} (${targetUrl})`);

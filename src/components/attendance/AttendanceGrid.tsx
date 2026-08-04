@@ -15,11 +15,12 @@ import {
   FileSpreadsheet,
   FileText
 } from 'lucide-react';
-import { sampleAttendanceGrid, sampleEmployees } from '../../data/mockData';
+
 import { api } from '../../services/api';
 
 export const AttendanceGrid: React.FC = () => {
   const [gridData, setGridData] = useState<any[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState<string>('2026-07'); // YYYY-MM
   const [searchQuery, setSearchQuery] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('All');
   const [selectedDayCell, setSelectedDayCell] = useState<{ empId: string; day: number; currentStatus: string } | null>(null);
@@ -33,6 +34,32 @@ export const AttendanceGrid: React.FC = () => {
 
   React.useEffect(() => {
     async function loadAttendance() {
+      try {
+        const gridRes = await fetch(`/api/attendance/grid?month=${selectedMonth}`);
+        const gridJson = await gridRes.json();
+        if (gridJson && gridJson.grid) {
+          const rows = Object.values(gridJson.grid).map((item: any) => {
+            const daysObj: Record<number, string> = {};
+            if (item.daily) {
+              Object.entries(item.daily).forEach(([dStr, dObj]: [string, any]) => {
+                daysObj[Number(dStr)] = dObj.status || 'P';
+              });
+            }
+            return {
+              employeeId: item.employeeId,
+              employeeName: item.employeeName,
+              department: item.department || 'General',
+              days: daysObj,
+              totalPresent: item.totalPresent || 22,
+              totalAbsent: item.totalAbsent || 0,
+              totalLate: item.totalLate || 0
+            };
+          });
+          setGridData(rows);
+          return;
+        }
+      } catch {}
+
       const employees = await api.getEmployees();
       if (Array.isArray(employees)) {
         if (employees.length === 0) {
@@ -59,7 +86,7 @@ export const AttendanceGrid: React.FC = () => {
       }
     }
     loadAttendance();
-  }, []);
+  }, [selectedMonth]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -110,12 +137,11 @@ export const AttendanceGrid: React.FC = () => {
       return row;
     }));
 
-    await api.updateAttendanceCell({
-      employeeId: empId,
-      day: String(day),
-      status: newStatus,
-      otHours
-    });
+    await api.updateAttendanceCell(
+      empId,
+      String(day),
+      newStatus
+    );
 
     showToast(`Day ${day} status updated to '${newStatus}' for ${empId}`);
     setSelectedDayCell(null);
@@ -130,9 +156,9 @@ export const AttendanceGrid: React.FC = () => {
   // Download Monthly Template CSV
   const handleDownloadTemplate = () => {
     let csv = `Employee ID,Employee Name,${daysInMonth.map(d => `Day ${d}`).join(',')}\n`;
-    sampleEmployees.forEach(emp => {
+    gridData.forEach(row => {
       const defaultDays = daysInMonth.map(() => 'P').join(',');
-      csv += `"${emp.id}","${emp.fullName}",${defaultDays}\n`;
+      csv += `"${row.employeeId}","${row.employeeName}",${defaultDays}\n`;
     });
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -256,8 +282,15 @@ export const AttendanceGrid: React.FC = () => {
             <CalendarIcon className="w-5 h-5 text-indigo-600" />
             Monthly Attendance Grid & Shift Roster
           </h2>
-          <p className="text-xs text-slate-500 mt-1">
-            31-Day Attendance Roster for <span className="font-bold text-slate-800">July 2026</span> • Real-time Biometric & Bulk CSV Import
+          <p className="text-xs text-slate-500 mt-1 flex items-center gap-2">
+            <span>31-Day Attendance Roster for</span>
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="px-2 py-0.5 border border-slate-300 rounded-md font-bold text-slate-800 bg-white shadow-2xs text-xs outline-hidden focus:ring-2 focus:ring-indigo-500"
+            />
+            <span>• Real-time Biometric & Bulk CSV Import</span>
           </p>
         </div>
 

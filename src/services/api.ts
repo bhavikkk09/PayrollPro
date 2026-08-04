@@ -38,6 +38,34 @@ function getTenantHeader(): Record<string, string> {
   return headers;
 }
 
+// Helper for Superadmin API calls: always reads auth token from localStorage superadmin session
+function getSuperAdminHeader(): Record<string, string> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  try {
+    const auth = localStorage.getItem('payrollpro_superadmin_session') || localStorage.getItem('payrollpro_auth_user');
+    if (auth) {
+      const parsed = JSON.parse(auth);
+      if (parsed.token) headers['Authorization'] = `Bearer ${parsed.token}`;
+    }
+  } catch {}
+  return headers;
+}
+
+// Helper to safely create and revoke Object URLs for file downloads (prevents memory leaks)
+function downloadBlobAsFile(blob: Blob, filename: string): void {
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  // Revoke URL after a brief delay to ensure download dialog triggers
+  setTimeout(() => {
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  }, 150);
+}
+
 export const api = {
   // Authentication
   async login(email: string, password: string, tenantCode?: string) {
@@ -72,6 +100,16 @@ export const api = {
     try {
       const res = await fetch('/api/tenant/info', { headers: getTenantHeader() });
       return await res.json();
+    } catch {
+      return null;
+    }
+  },
+
+  async getCompany() {
+    try {
+      const res = await fetch('/api/company', { headers: getTenantHeader() });
+      const data = await res.json();
+      return data.company;
     } catch {
       return null;
     }
@@ -427,10 +465,10 @@ export const api = {
     }
   },
 
-  // SaaS Super Admin
+  // SaaS Super Admin — all routes require superadmin Authorization header
   async getTenants() {
     try {
-      const res = await fetch('/api/superadmin/tenants');
+      const res = await fetch('/api/superadmin/tenants', { headers: getSuperAdminHeader() });
       return await res.json();
     } catch {
       return null;
@@ -441,7 +479,7 @@ export const api = {
     try {
       const res = await fetch('/api/superadmin/tenants', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getSuperAdminHeader(),
         body: JSON.stringify(tenant)
       });
       return await res.json();
@@ -454,7 +492,7 @@ export const api = {
     try {
       const res = await fetch(`/api/superadmin/tenants/${id}/status`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getSuperAdminHeader(),
         body: JSON.stringify({ status })
       });
       return await res.json();
@@ -465,7 +503,7 @@ export const api = {
 
   async getSuperAdminMetrics() {
     try {
-      const res = await fetch('/api/superadmin/metrics');
+      const res = await fetch('/api/superadmin/metrics', { headers: getSuperAdminHeader() });
       return await res.json();
     } catch {
       return null;
@@ -492,6 +530,207 @@ export const api = {
       return await res.json();
     } catch {
       return { success: false, html: '<div>Could not render statutory register.</div>' };
+    }
+  },
+
+  async getSalaryComponents() {
+    try {
+      const res = await fetch('/api/salary-components', { headers: getTenantHeader() });
+      const data = await res.json();
+      return data.components || [];
+    } catch {
+      return [];
+    }
+  },
+
+  async createSalaryComponent(component: any) {
+    try {
+      const res = await fetch('/api/salary-components', {
+        method: 'POST',
+        headers: getTenantHeader(),
+        body: JSON.stringify(component)
+      });
+      return await res.json();
+    } catch {
+      return { success: false };
+    }
+  },
+
+  async updateSalaryComponent(id: string, updates: any) {
+    try {
+      const res = await fetch(`/api/salary-components/${id}`, {
+        method: 'PUT',
+        headers: getTenantHeader(),
+        body: JSON.stringify(updates)
+      });
+      return await res.json();
+    } catch {
+      return { success: false };
+    }
+  },
+
+  async deleteSalaryComponent(id: string) {
+    try {
+      const res = await fetch(`/api/salary-components/${id}`, {
+        method: 'DELETE',
+        headers: getTenantHeader()
+      });
+      return await res.json();
+    } catch {
+      return { success: false };
+    }
+  },
+
+  async importMonthlyAttendanceCSV(data: any) {
+    try {
+      const res = await fetch('/api/attendance/bulk', {
+        method: 'POST',
+        headers: getTenantHeader(),
+        body: JSON.stringify(data)
+      });
+      return await res.json();
+    } catch {
+      return { success: false };
+    }
+  },
+
+  async importBiometrics() {
+    try {
+      const res = await fetch('/api/attendance/biometric-sync', {
+        method: 'POST',
+        headers: getTenantHeader()
+      });
+      return await res.json();
+    } catch {
+      return { success: false };
+    }
+  },
+
+  async updateAttendanceCell(employeeId: string, date: string, status: string) {
+    return this.updateAttendanceStatus(employeeId, date, status);
+  },
+
+  async updateBankDetails(employeeId: string, bankData: any) {
+    try {
+      const res = await fetch(`/api/employees/${employeeId}`, {
+        method: 'PUT',
+        headers: getTenantHeader(),
+        body: JSON.stringify(bankData)
+      });
+      return await res.json();
+    } catch {
+      return { success: false };
+    }
+  },
+
+  async getSalarySlips(employeeId: string) {
+    try {
+      const res = await fetch(`/api/payroll/slips/${employeeId}`, { headers: getTenantHeader() });
+      if (!res.ok) throw new Error('Failed to fetch salary slips');
+      return await res.json();
+    } catch (err) {
+      console.error('API Error:', err);
+      return null;
+    }
+  },
+
+  async generateBankFile(format: string) {
+    try {
+      const res = await fetch('/api/payroll/generate-bank-file', {
+        method: 'POST',
+        headers: getTenantHeader(),
+        body: JSON.stringify({ format })
+      });
+      const blob = await res.blob();
+      downloadBlobAsFile(blob, `bank_file_${format}.csv`);
+      return { success: true };
+    } catch {
+      return { success: false };
+    }
+  },
+
+  async generatePfEcr() {
+    try {
+      const res = await fetch('/api/compliance/generate-pf-ecr', {
+        method: 'POST',
+        headers: getTenantHeader()
+      });
+      const blob = await res.blob();
+      downloadBlobAsFile(blob, 'pf_ecr.txt');
+      return { success: true };
+    } catch {
+      return { success: false };
+    }
+  },
+
+  async generateEsicReturn() {
+    try {
+      const res = await fetch('/api/compliance/generate-esic-return', {
+        method: 'POST',
+        headers: getTenantHeader()
+      });
+      const blob = await res.blob();
+      downloadBlobAsFile(blob, 'esic_return.csv');
+      return { success: true };
+    } catch {
+      return { success: false };
+    }
+  },
+
+  async generatePtReturn() {
+    try {
+      const res = await fetch('/api/compliance/generate-pt-return', {
+        method: 'POST',
+        headers: getTenantHeader()
+      });
+      const blob = await res.blob();
+      downloadBlobAsFile(blob, 'pt_return.csv');
+      return { success: true };
+    } catch {
+      return { success: false };
+    }
+  },
+
+  async generateTds24Q() {
+    try {
+      const res = await fetch('/api/compliance/generate-tds-24q', {
+        method: 'POST',
+        headers: getTenantHeader()
+      });
+      const blob = await res.blob();
+      downloadBlobAsFile(blob, 'tds_24q.txt');
+      return { success: true };
+    } catch {
+      return { success: false };
+    }
+  },
+  
+  async impersonateTenant(targetTenant: string) {
+    try {
+      const res = await fetch('/api/superadmin/impersonate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getTenantHeader() },
+        body: JSON.stringify({ targetTenant })
+      });
+      return await res.json();
+    } catch {
+      return { success: false };
+    }
+  },
+
+  async askAiAssistant(prompt: string, context: string, type: string) {
+    try {
+      const res = await fetch('/api/ai/assistant', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getTenantHeader()
+        },
+        body: JSON.stringify({ prompt, context, type })
+      });
+      return await res.json();
+    } catch {
+      return null;
     }
   }
 };

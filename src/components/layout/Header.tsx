@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Menu,
   Search,
@@ -21,7 +21,7 @@ import {
   LogOut
 } from 'lucide-react';
 import { NavigationSection } from '../../types';
-import { companyDetails } from '../../data/mockData';
+import { api } from '../../services/api';
 
 interface HeaderProps {
   currentSection: NavigationSection;
@@ -51,6 +51,17 @@ export const Header: React.FC<HeaderProps> = ({
   onLogout
 }) => {
   const [showQuickActions, setShowQuickActions] = useState(false);
+  const [dynamicBranches, setDynamicBranches] = useState<Array<{ id: string; name: string }>>([]);
+
+  useEffect(() => {
+    async function loadBranches() {
+      const data = await api.getMasters();
+      if (data && data.branches && Array.isArray(data.branches)) {
+        setDynamicBranches(data.branches);
+      }
+    }
+    loadBranches();
+  }, [window.location.pathname]);
 
   const sectionTitles: Record<NavigationSection, { title: string; subtitle: string }> = {
     dashboard: { title: 'Action Dashboard', subtitle: 'Real-time operational alerts, attendance & payroll status' },
@@ -128,12 +139,18 @@ export const Header: React.FC<HeaderProps> = ({
               onChange={(e) => onChangeBranch(e.target.value)}
               className="bg-transparent border-none outline-hidden cursor-pointer text-xs font-semibold text-slate-800 pr-1"
             >
-              <option value="ALL">All Branches ({companyName || companyDetails.name})</option>
-              {companyDetails.branches.map((b) => (
-                <option key={b.code} value={b.code}>
-                  {b.name}
-                </option>
-              ))}
+              <option value="ALL">All Branches ({companyName || 'Corporate Entity'})</option>
+              {dynamicBranches.length > 0
+                ? dynamicBranches.map((b) => (
+                    <option key={b.id || b.name} value={b.name}>
+                      {b.name}
+                    </option>
+                  ))
+                : ['Mumbai Headquarters', 'Bengaluru Tech Hub', 'Pune Works'].map((b) => (
+                    <option key={b} value={b}>
+                      {b}
+                    </option>
+                  ))}
             </select>
           </div>
         </div>

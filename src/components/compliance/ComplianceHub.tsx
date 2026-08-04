@@ -18,62 +18,23 @@ export const ComplianceHub: React.FC = () => {
   }, []);
 
   const handleDownloadPfECR = async () => {
-    const res = await fetch('/api/compliance/generate-pf-ecr', { method: 'POST' });
-    const text = await res.text();
-    const blob = new Blob([text], { type: 'text/plain' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'PF_ECR_JULY_2026.txt';
-    a.click();
+    await api.generatePfEcr();
   };
 
   const handleDownloadEsicReturn = async () => {
-    const res = await fetch('/api/compliance/generate-esic-return', { method: 'POST' });
-    const csv = await res.text();
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'ESIC_Monthly_Return_July_2026.csv';
-    a.click();
+    await api.generateEsicReturn();
   };
 
   const handleDownloadPtReturn = async () => {
-    const res = await fetch('/api/compliance/generate-pt-return', { method: 'POST' });
-    const csv = await res.text();
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'Maharashtra_PT_Form_III_A_July_2026.csv';
-    a.click();
+    await api.generatePtReturn();
   };
 
   const handleDownloadTds24Q = async () => {
-    const res = await fetch('/api/compliance/generate-tds-24q', { method: 'POST' });
-    const txt = await res.text();
-    const blob = new Blob([txt], { type: 'text/plain' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'Form24Q_Q1_2026_27.txt';
-    a.click();
+    await api.generateTds24Q();
   };
 
   const handleDownloadBankFile = async () => {
-    const res = await fetch('/api/payroll/generate-bank-file', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ format: 'HDFC' })
-    });
-    const csv = await res.text();
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'HDFC_Corporate_Salary_Disbursal_July_2026.csv';
-    a.click();
+    await api.generateBankFile('HDFC');
   };
 
   const handleGenerateFiling = (itemId: string) => {

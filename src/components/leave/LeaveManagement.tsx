@@ -68,7 +68,11 @@ export const LeaveManagement: React.FC<LeaveManagementProps> = ({ employeesList 
       return;
     }
 
-    const emp = sampleEmployees.find((e) => e.id === leaveForm.employeeId) || sampleEmployees[0];
+    const emp = employees.find((e) => e.id === leaveForm.employeeId) || employees[0];
+    if (!emp) {
+      alert('No valid employee found. Cannot apply leave.');
+      return;
+    }
     const from = new Date(leaveForm.fromDate);
     const to = new Date(leaveForm.toDate);
     const diffTime = Math.abs(to.getTime() - from.getTime());
@@ -94,7 +98,7 @@ export const LeaveManagement: React.FC<LeaveManagementProps> = ({ employeesList 
     await api.createLeaveRequest(newReq);
 
     setLeaveForm({
-      employeeId: sampleEmployees[0]?.id || 'EMP-00101',
+      employeeId: employees[0]?.id || 'EMP-00101',
       leaveType: 'Casual Leave (CL)',
       fromDate: new Date().toISOString().split('T')[0],
       toDate: new Date().toISOString().split('T')[0],

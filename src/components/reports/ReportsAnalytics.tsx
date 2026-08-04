@@ -13,7 +13,9 @@ import {
   Building2
 } from 'lucide-react';
 import { api } from '../../services/api';
+import { Employee } from '../../types';
 import { sampleEmployees } from '../../data/mockData';
+
 
 export const ReportsAnalytics: React.FC = () => {
   const [activeReportTab, setActiveReportTab] = useState<'overview' | 'payRegister' | 'salarySlip' | 'pfSummary' | 'esiSummary' | 'ptSummary' | 'bankFile'>('payRegister');
@@ -33,9 +35,13 @@ export const ReportsAnalytics: React.FC = () => {
   };
 
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [companyProfile, setCompanyProfile] = useState<any>(null);
 
   useEffect(() => {
     async function loadReports() {
+      const comp = await api.getCompany();
+      if (comp) setCompanyProfile(comp);
+
       const payReg = await api.getPayRegisterReport();
       if (payReg && payReg.payRegister) setPayRegisterData(payReg.payRegister);
 
@@ -49,7 +55,7 @@ export const ReportsAnalytics: React.FC = () => {
       if (pt && pt.ptSummary) setPtSummaryData(pt.ptSummary);
     }
     loadReports();
-  }, []);
+  }, [window.location.pathname]);
 
   useEffect(() => {
     async function loadData() {
@@ -65,8 +71,7 @@ export const ReportsAnalytics: React.FC = () => {
   useEffect(() => {
     async function loadSlip() {
       try {
-        const res = await fetch(`/api/payroll/slips/${selectedSlipEmployeeId}`);
-        const data = await res.json();
+        const data = await api.getSalarySlips(selectedSlipEmployeeId);
         if (data && data.salarySlip) setSalarySlipData(data.salarySlip);
       } catch {
         const emp = employees.find(e => e.id === selectedSlipEmployeeId) || employees[0];
@@ -148,18 +153,7 @@ export const ReportsAnalytics: React.FC = () => {
   };
 
   const exportBankFileCSV = async () => {
-    const res = await fetch('/api/payroll/generate-bank-file', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ format: 'HDFC' })
-    });
-    const csv = await res.text();
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'HDFC_Corporate_Salary_Disbursal_July_2026.csv';
-    a.click();
+    await api.generateBankFile('HDFC');
     showToast('Downloaded HDFC_Corporate_Salary_Disbursal_July_2026.csv successfully!');
   };
 
@@ -428,9 +422,9 @@ export const ReportsAnalytics: React.FC = () => {
               {/* Header */}
               <div className="flex items-center justify-between border-b border-slate-200 pb-4">
                 <div>
-                  <h2 className="text-lg font-black text-slate-900 tracking-tight">Apex Enterprises India Pvt. Ltd.</h2>
-                  <p className="text-[11px] text-slate-500">BKC Office Tower, Bandra Kurla Complex, Mumbai, MH 400051</p>
-                  <p className="text-[10px] text-slate-400 font-mono">CIN: U72200MH2018PTC309182 • TAN: MUMA12345B</p>
+                  <h2 className="text-lg font-black text-slate-900 tracking-tight">{companyProfile?.name || 'ABC Manufacturing Pvt. Ltd.'}</h2>
+                  <p className="text-[11px] text-slate-500">{companyProfile?.headquarters || 'Plot 42, Hadapsar Industrial Estate, Pune, Maharashtra 411013'}</p>
+                  <p className="text-[10px] text-slate-400 font-mono">CIN: {companyProfile?.cin || 'U28990MH2015PTC268901'} • TAN: {companyProfile?.tan || 'MUMA98765C'}</p>
                 </div>
                 <div className="text-right">
                   <div className="inline-block px-3 py-1 bg-indigo-100 text-indigo-900 font-extrabold rounded-lg text-xs uppercase tracking-wider">

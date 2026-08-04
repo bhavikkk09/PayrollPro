@@ -23,7 +23,6 @@ import {
   X,
   Upload
 } from 'lucide-react';
-import { companyDetails, salaryComponentsList as initialSalaryComponents } from '../../data/mockData';
 import { SalaryComponent } from '../../types';
 import { api } from '../../services/api';
 
@@ -157,7 +156,7 @@ const initialPolicyModules: PolicyModule[] = [
 export const ConsolidatedMasters: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'policies' | 'company' | 'branches' | 'shifts' | 'components' | 'approval'>('policies');
   const [policies, setPolicies] = useState<PolicyModule[]>(initialPolicyModules);
-  const [salaryComponents, setSalaryComponents] = useState<SalaryComponent[]>(initialSalaryComponents);
+  const [salaryComponents, setSalaryComponents] = useState<SalaryComponent[]>([]);
   const [policyCategoryFilter, setPolicyCategoryFilter] = useState<'All' | 'Attendance' | 'Leave' | 'Payroll'>('All');
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -217,16 +216,23 @@ export const ConsolidatedMasters: React.FC = () => {
     }
   });
 
-  const [activeCompanyDetails, setActiveCompanyDetails] = useState(companyDetails);
+  const [activeCompanyDetails, setActiveCompanyDetails] = useState<any>(null);
+  const activeTenantKey = (window.location.pathname.replace(/^\/+|\/+$/g, '').split('/')[0] || 'apex').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const logoKey = `payrollpro_company_logo_${activeTenantKey}`;
 
   useEffect(() => {
     async function loadMasterInfo() {
-      const info = await api.getTenantInfo();
-      if (info && info.companyName) {
-        setActiveCompanyDetails((prev) => ({
-          ...prev,
-          name: info.companyName
-        }));
+      const company = await api.getCompany();
+      if (company) {
+        setActiveCompanyDetails(company);
+      } else {
+        const info = await api.getTenantInfo();
+        if (info && info.companyName) {
+          setActiveCompanyDetails((prev: any) => ({
+            ...prev,
+            name: info.companyName
+          }));
+        }
       }
       const data = await api.getSalaryComponents();
       if (data && data.length > 0) {
@@ -234,7 +240,7 @@ export const ConsolidatedMasters: React.FC = () => {
       }
     }
     loadMasterInfo();
-  }, []);
+  }, [window.location.pathname]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -778,9 +784,9 @@ export const ConsolidatedMasters: React.FC = () => {
           <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="w-20 h-20 rounded-2xl bg-white border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden shrink-0 shadow-2xs relative group">
-                {localStorage.getItem('payrollpro_company_logo') ? (
+                {localStorage.getItem(logoKey) ? (
                   <img
-                    src={localStorage.getItem('payrollpro_company_logo') || ''}
+                    src={localStorage.getItem(logoKey) || ''}
                     alt="Uploaded Company Logo"
                     className="w-full h-full object-contain p-1"
                   />
@@ -792,7 +798,7 @@ export const ConsolidatedMasters: React.FC = () => {
               <div>
                 <h4 className="font-bold text-slate-900 text-xs">Official Corporate Logo & Document Watermark</h4>
                 <p className="text-[11px] text-slate-500 mt-0.5 max-w-lg">
-                  Uploaded logo is automatically applied as a subtle 10% opacity background watermark across all statutory registers (Form IV, PF ECR, ESIC), summary reports, salary slips, and HR letters.
+                  Uploaded logo is automatically applied as a subtle 10% opacity background watermark across all statutory registers (Form IV, PF ECR, ESIC), summary reports, salary slips, and HR letters for {activeCompanyDetails.name}.
                 </p>
                 <div className="flex items-center gap-2 mt-2">
                   <label className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-[11px] cursor-pointer transition-colors inline-flex items-center gap-1.5 shadow-2xs">
@@ -807,7 +813,7 @@ export const ConsolidatedMasters: React.FC = () => {
                           const reader = new FileReader();
                           reader.onloadend = () => {
                             const base64 = reader.result as string;
-                            localStorage.setItem('payrollpro_company_logo', base64);
+                            localStorage.setItem(logoKey, base64);
                             showToast('Company logo uploaded & saved! Watermark applied across all registers, salary slips, and HR letters.');
                             window.location.reload();
                           };
@@ -818,10 +824,10 @@ export const ConsolidatedMasters: React.FC = () => {
                     />
                   </label>
 
-                  {localStorage.getItem('payrollpro_company_logo') && (
+                  {localStorage.getItem(logoKey) && (
                     <button
                       onClick={() => {
-                        localStorage.removeItem('payrollpro_company_logo');
+                        localStorage.removeItem(logoKey);
                         showToast('Company logo removed.');
                         window.location.reload();
                       }}
@@ -842,23 +848,23 @@ export const ConsolidatedMasters: React.FC = () => {
             </div>
             <div>
               <span className="text-slate-400">Company CIN</span>
-              <div className="font-mono font-bold text-slate-900 mt-0.5">{companyDetails.cin}</div>
+              <div className="font-mono font-bold text-slate-900 mt-0.5">{activeCompanyDetails.cin || 'U28990MH2015PTC268901'}</div>
             </div>
             <div>
               <span className="text-slate-400">Company PAN</span>
-              <div className="font-mono font-bold text-slate-900 mt-0.5">{companyDetails.pan}</div>
+              <div className="font-mono font-bold text-slate-900 mt-0.5">{activeCompanyDetails.pan || 'AABCA9876F'}</div>
             </div>
             <div>
               <span className="text-slate-400">EPFO Establishment Code</span>
-              <div className="font-mono font-bold text-indigo-700 mt-0.5">{companyDetails.epfoEstCode}</div>
+              <div className="font-mono font-bold text-indigo-700 mt-0.5">{activeCompanyDetails.epfoEstCode || 'MH/PUN/0098765/000'}</div>
             </div>
             <div>
               <span className="text-slate-400">ESIC Establishment Code</span>
-              <div className="font-mono font-bold text-indigo-700 mt-0.5">{companyDetails.esicEstCode}</div>
+              <div className="font-mono font-bold text-indigo-700 mt-0.5">{activeCompanyDetails.esicEstCode || '31000987650001001'}</div>
             </div>
             <div>
               <span className="text-slate-400">TAN Number</span>
-              <div className="font-mono font-bold text-slate-900 mt-0.5">{companyDetails.tan}</div>
+              <div className="font-mono font-bold text-slate-900 mt-0.5">{activeCompanyDetails.tan || 'MUMA98765C'}</div>
             </div>
           </div>
         </div>
@@ -871,11 +877,11 @@ export const ConsolidatedMasters: React.FC = () => {
             Branch Offices & Locations
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {companyDetails.branches.map((b) => (
-              <div key={b.code} className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
+            {(activeCompanyDetails?.branches || []).map((b: any) => (
+              <div key={b.id || b.name} className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
                 <div className="font-bold text-slate-900">{b.name}</div>
-                <div className="text-slate-500">{b.city}, {b.state}</div>
-                <div className="text-[10px] font-mono text-indigo-700 font-bold">Code: {b.code}</div>
+                <div className="text-slate-500">{b.employeeCount ? `${b.employeeCount} active employee(s)` : 'Branch Location'}</div>
+                <div className="text-[10px] font-mono text-indigo-700 font-bold">Status: {b.status || 'Active'}</div>
               </div>
             ))}
           </div>

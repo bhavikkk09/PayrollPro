@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Sparkles, X, Send, Bot, User, FileText, ShieldCheck, Banknote, RefreshCw } from 'lucide-react';
+import { api } from '../../services/api';
 
 interface AiAssistantDrawerProps {
   isOpen: boolean;
@@ -33,21 +34,15 @@ export const AiAssistantDrawer: React.FC<AiAssistantDrawerProps> = ({
     setLoading(true);
 
     try {
-      const response = await fetch('/api/ai/assistant', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: message,
-          context: 'Frappe HRMS Modern Redesign',
-          type: 'general_hr_query'
-        })
-      });
-
-      const data = await response.json();
-      setChatHistory((prev) => [
-        ...prev,
-        { sender: 'ai', text: data.reply || 'No response returned.', source: data.source }
-      ]);
+      const data = await api.askAiAssistant(message, 'Frappe HRMS Modern Redesign', 'general_hr_query');
+      if (data) {
+        setChatHistory((prev) => [
+          ...prev,
+          { sender: 'ai', text: data.reply || 'No response returned.', source: data.source }
+        ]);
+      } else {
+        throw new Error('No data');
+      }
     } catch (err) {
       setChatHistory((prev) => [
         ...prev,

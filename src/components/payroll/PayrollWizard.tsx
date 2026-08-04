@@ -25,19 +25,24 @@ export const PayrollWizard: React.FC = () => {
   const [employees, setEmployees] = useState<any[]>([]);
   const [payrollBatch, setPayrollBatch] = useState<any>(null);
 
+  const currentDate = new Date();
+  const currentMonthStr = currentDate.toLocaleString('default', { month: 'long' });
+  const currentYear = currentDate.getFullYear();
+  const monthCycle = `${currentMonthStr} ${currentYear}`;
+
   React.useEffect(() => {
     async function loadData() {
       const emps = await api.getEmployees();
       if (Array.isArray(emps)) {
         setEmployees(emps);
       }
-      const batch = await api.calculatePayrollBatch('July 2026', 2026);
+      const batch = await api.calculatePayrollBatch(monthCycle, currentYear);
       if (batch) {
         setPayrollBatch(batch);
       }
     }
     loadData();
-  }, []);
+  }, [monthCycle, currentYear]);
 
   const steps = [
     { number: 1, title: 'Lock Attendance', desc: 'Verify 31-day attendance grid & LOP' },
@@ -76,7 +81,7 @@ export const PayrollWizard: React.FC = () => {
             <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/30 text-emerald-200 border border-emerald-400/30">
               Guided Payroll Engine
             </span>
-            <span className="text-xs text-slate-300 font-mono">July 2026 Cycle</span>
+            <span className="text-xs text-slate-300 font-mono">{monthCycle} Cycle</span>
           </div>
           <h2 className="text-xl font-bold tracking-tight mt-1">
             Indian Statutory Payroll Processing Wizard
@@ -179,12 +184,12 @@ export const PayrollWizard: React.FC = () => {
             </p>
             {employees.length === 0 ? (
               <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1">
-                <div className="font-bold text-slate-800">Calculated OT Payout for July 2026: ₹0</div>
+                <div className="font-bold text-slate-800">Calculated OT Payout for {monthCycle}: ₹0</div>
                 <div className="text-slate-500">No overtime hours logged for this cycle.</div>
               </div>
             ) : (
               <div className="p-4 bg-indigo-50/60 rounded-xl border border-indigo-100 text-xs space-y-1">
-                <div className="font-bold text-indigo-900">Calculated OT Payout for July 2026: ₹12,450</div>
+                <div className="font-bold text-indigo-900">Calculated OT Payout for {monthCycle}: ₹12,450</div>
                 <div className="text-slate-600">{employees.slice(0, 3).map(e => e.fullName).join(' (4 hrs) • ')}</div>
               </div>
             )}
@@ -201,7 +206,7 @@ export const PayrollWizard: React.FC = () => {
               Automated deduction of active salary advances from Net Salary.
             </p>
             <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600">
-              No active loan deductions pending for July 2026 cycle.
+              No active loan deductions pending for {monthCycle} cycle.
             </div>
           </div>
         )}
@@ -319,7 +324,7 @@ export const PayrollWizard: React.FC = () => {
             <div className="p-6 bg-emerald-50 rounded-2xl border border-emerald-200 text-center space-y-3">
               <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto" />
               <h3 className="text-lg font-bold text-emerald-950">
-                July 2026 Payroll Calculation Complete!
+                {monthCycle} Payroll Calculation Complete!
               </h3>
               <p className="text-xs text-emerald-800 max-w-lg mx-auto">
                 All 3 approvals granted. Net Disbursal Amount: <span className="font-mono font-bold">₹{totalNet.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
@@ -328,18 +333,7 @@ export const PayrollWizard: React.FC = () => {
               <div className="flex items-center justify-center gap-3 pt-3 flex-wrap">
                 <button
                   onClick={async () => {
-                    const res = await fetch('/api/payroll/generate-bank-file', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ format: 'HDFC' })
-                    });
-                    const csv = await res.text();
-                    const blob = new Blob([csv], { type: 'text/csv' });
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = 'HDFC_Corporate_Salary_Disbursal_July_2026.csv';
-                    a.click();
+                    await api.generateBankFile('HDFC');
                   }}
                   className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs shadow-md cursor-pointer"
                 >
@@ -348,18 +342,7 @@ export const PayrollWizard: React.FC = () => {
 
                 <button
                   onClick={async () => {
-                    const res = await fetch('/api/compliance/generate-ecr', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ month: '07', year: '2026' })
-                    });
-                    const text = await res.text();
-                    const blob = new Blob([text], { type: 'text/plain' });
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = 'PF_ECR_July_2026.txt';
-                    a.click();
+                    await api.generatePfEcr();
                   }}
                   className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-md cursor-pointer"
                 >
